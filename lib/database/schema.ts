@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export const schema = appSchema({
-  version: 1,
+  version: 2,
   tables: [
     tableSchema({
       name: 'cadastros',
@@ -50,6 +50,12 @@ export const schema = appSchema({
         { name: 'prioridade', type: 'string', isOptional: true },
         { name: 'nucleo_familiar', type: 'string', isOptional: true },
         { name: 'observacoes', type: 'string', isOptional: true },
+        { name: 'qual_desastre', type: 'string', isOptional: true },
+        { name: 'qual_ajuda_defesa_civil', type: 'string', isOptional: true },
+        { name: 'qual_deficiencia', type: 'string', isOptional: true },
+        { name: 'qual_doenca_cronica', type: 'string', isOptional: true },
+        { name: 'qual_medicamento', type: 'string', isOptional: true },
+        { name: 'docs_faltantes', type: 'string', isOptional: true },
         { name: 'rascunho', type: 'boolean' },
         { name: 'sincronizado', type: 'boolean' },
         { name: 'created_at', type: 'number' },

@@ -75,6 +75,13 @@ function applyCPF(v: string) {
     .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
 }
 
+function applyDate(v: string) {
+  const nums = v.replace(/\D/g, '').slice(0, 8);
+  if (nums.length <= 2) return nums;
+  if (nums.length <= 4) return `${nums.slice(0, 2)}/${nums.slice(2)}`;
+  return `${nums.slice(0, 2)}/${nums.slice(2, 4)}/${nums.slice(4)}`;
+}
+
 function applyPhone(v: string) {
   return v.replace(/\D/g, '').slice(0, 11)
     .replace(/(\d{2})(\d)/, '($1) $2')
@@ -112,6 +119,8 @@ export default function NovoCadastro() {
     doenca_cronica: null as boolean | null, medicamento_continuo: null as boolean | null,
     documentos_completos: null as boolean | null, assistencia_imediata: null as boolean | null,
     prioridade: '', observacoes: '',
+    qual_desastre: '', qual_ajuda_defesa_civil: '', qual_deficiencia: '',
+    qual_doenca_cronica: '', qual_medicamento: '', docs_faltantes: '',
   });
 
   const idade = calcIdade(form.data_nascimento);
@@ -200,7 +209,7 @@ export default function NovoCadastro() {
             <View style={{ flex: 1 }}><Field label="RG"><Input value={form.rg} onChangeText={(v: string) => set('rg', v)} placeholder="0000000-0" /></Field></View>
           </View>
           <View style={styles.row}>
-            <View style={{ flex: 1 }}><Field label="Data de Nascimento"><Input value={form.data_nascimento} onChangeText={(v: string) => set('data_nascimento', v)} placeholder="DD/MM/AAAA" keyboardType="numeric" /></Field></View>
+            <View style={{ flex: 1 }}><Field label="Data de Nascimento"><Input value={form.data_nascimento} onChangeText={(v: string) => set('data_nascimento', applyDate(v))} placeholder="DD/MM/AAAA" keyboardType="numeric" /></Field></View>
             <View style={{ flex: 1 }}><Field label="Idade"><View style={[styles.input, styles.inputDisabled]}><Text style={styles.inputDisabledText}>{idade !== null ? `${idade} anos` : 'Calculada'}</Text></View></Field></View>
           </View>
           <Field label="Gênero"><BtnGroup options={GENEROS} value={form.genero} onChange={(v) => set('genero', v)} /></Field>
@@ -258,11 +267,21 @@ export default function NovoCadastro() {
           <SectionTitle title="⚠️ Situação de Risco" />
           <Field label="Residência em Área de Risco?"><SimNao value={form.area_risco} onChange={(v) => set('area_risco', v)} /></Field>
           <Field label="Já foi afetado por desastre?"><SimNao value={form.afetado_desastre} onChange={(v) => set('afetado_desastre', v)} /></Field>
+          {form.afetado_desastre === true && (
+            <Field label="Qual desastre?">
+              <Input value={form.qual_desastre} onChangeText={(v: string) => set('qual_desastre', v)} placeholder="Ex: Enchente, Deslizamento..." />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>
           <SectionTitle title="🤝 Assistência" />
           <Field label="Já recebeu ajuda da Defesa Civil?"><SimNao value={form.ajuda_defesa_civil} onChange={(v) => set('ajuda_defesa_civil', v)} /></Field>
+          {form.ajuda_defesa_civil === true && (
+            <Field label="Qual ajuda recebida?">
+              <Input value={form.qual_ajuda_defesa_civil} onChangeText={(v: string) => set('qual_ajuda_defesa_civil', v)} placeholder="Ex: Cesta básica, Abrigo..." />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -276,13 +295,33 @@ export default function NovoCadastro() {
         <View style={styles.section}>
           <SectionTitle title="🏥 Saúde" />
           <Field label="Possui alguma deficiência?"><SimNao value={form.deficiencia} onChange={(v) => set('deficiencia', v)} /></Field>
+          {form.deficiencia === true && (
+            <Field label="Qual deficiência?">
+              <Input value={form.qual_deficiencia} onChangeText={(v: string) => set('qual_deficiencia', v)} placeholder="Descreva a deficiência" />
+            </Field>
+          )}
           <Field label="Possui doença crônica?"><SimNao value={form.doenca_cronica} onChange={(v) => set('doenca_cronica', v)} /></Field>
+          {form.doenca_cronica === true && (
+            <Field label="Qual doença crônica?">
+              <Input value={form.qual_doenca_cronica} onChangeText={(v: string) => set('qual_doenca_cronica', v)} placeholder="Ex: Diabetes, Hipertensão..." />
+            </Field>
+          )}
           <Field label="Necessita medicamento contínuo?"><SimNao value={form.medicamento_continuo} onChange={(v) => set('medicamento_continuo', v)} /></Field>
+          {form.medicamento_continuo === true && (
+            <Field label="Qual medicamento?">
+              <Input value={form.qual_medicamento} onChangeText={(v: string) => set('qual_medicamento', v)} placeholder="Nome do medicamento" />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>
           <SectionTitle title="📄 Documentação" />
           <Field label="Possui documentos completos?"><SimNao value={form.documentos_completos} onChange={(v) => set('documentos_completos', v)} /></Field>
+          {form.documentos_completos === false && (
+            <Field label="Quais documentos faltam?">
+              <Input value={form.docs_faltantes} onChangeText={(v: string) => set('docs_faltantes', v)} placeholder="Ex: RG, CPF, Certidão..." />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>
