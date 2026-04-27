@@ -90,6 +90,8 @@ const FORM_INICIAL = {
   orgao_destino: [] as string[],
   situacao_imovel: '', reavaliacao: null as boolean | null,
   nome_vistoriador: '', matricula: '',
+  qual_extintor_outro: '', qual_orgao_outro: '', qual_sistema_fixo: '',
+  obs_hidrante: '', obs_iluminacao: '', obs_planta_baixa: '',
 };
 
 export default function NovaVistoriaTecnica() {
@@ -128,6 +130,12 @@ export default function NovaVistoriaTecnica() {
           orgao_destino: raw.orgao_destino ? JSON.parse(raw.orgao_destino) : [],
           situacao_imovel: raw.situacao_imovel || '', reavaliacao: raw.reavaliacao ?? null,
           nome_vistoriador: raw.nome_vistoriador || '', matricula: raw.matricula || '',
+          qual_extintor_outro: raw.qual_extintor_outro || '',
+          qual_orgao_outro: raw.qual_orgao_outro || '',
+          qual_sistema_fixo: raw.qual_sistema_fixo || '',
+          obs_hidrante: raw.obs_hidrante || '',
+          obs_iluminacao: raw.obs_iluminacao || '',
+          obs_planta_baixa: raw.obs_planta_baixa || '',
         });
       }).catch(() => {});
     }
@@ -174,13 +182,13 @@ export default function NovaVistoriaTecnica() {
         const data = { ...form, orgao_destino: JSON.stringify(form.orgao_destino), area_total: parseFloat(form.area_total) || 0, capacidade_pessoas: parseInt(form.capacidade_pessoas) || 0, qtd_extintores: parseInt(form.qtd_extintores) || 0, qtd_saidas: parseInt(form.qtd_saidas) || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
-          await rec.update((r: any) => { Object.assign(r._raw, data); });
+          await rec.update((r: any) => { Object.keys(data).forEach(key => { r._raw[key] = (data as any)[key]; }); });
         } else {
           await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
         }
       });
       Alert.alert('Sucesso', 'Vistoria Técnica salva!', [{ text: 'OK', onPress: () => router.back() }]);
-    } catch (e) { Alert.alert('Erro', 'Não foi possível salvar.'); }
+    } catch (e) { console.error('Erro ao salvar:', e); Alert.alert('Erro', 'Não foi possível salvar.'); }
   }
   async function capturaGPS() {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -251,6 +259,11 @@ export default function NovaVistoriaTecnica() {
                 <View style={{ flex: 1 }}><Field label="Quantidade"><Input value={form.qtd_extintores} onChangeText={(v: string) => set('qtd_extintores', v)} placeholder="Ex: 2" keyboardType="numeric" /></Field></View>
               </View>
               <Field label="Tipo do Extintor"><BtnGroup options={TIPOS_EXTINTOR} value={form.tipo_extintor} onChange={(v) => set('tipo_extintor', v)} /></Field>
+              {form.tipo_extintor === 'Outro' && (
+                <Field label="Qual tipo de extintor?">
+                  <Input value={form.qual_extintor_outro} onChangeText={(v: string) => set('qual_extintor_outro', v)} placeholder="Descreva o tipo" />
+                </Field>
+              )}
               <Field label="Dentro do prazo de validade?"><SimNao value={form.extintor_validade} onChange={(v) => set('extintor_validade', v)} /></Field>
               <Field label="Localização adequada e acessível?"><SimNao value={form.extintor_localizacao_ok} onChange={(v) => set('extintor_localizacao_ok', v)} /></Field>
             </>
@@ -273,21 +286,41 @@ export default function NovaVistoriaTecnica() {
             <Field label="GLP armazenado em local ventilado e sinalizado?"><SimNao value={form.glp_armazenamento_ok} onChange={(v) => set('glp_armazenamento_ok', v)} /></Field>
           )}
           <Field label="Possui outro sistema fixo de combate a incêndio (sprinkler, hidrante interno)?"><SimNao value={form.sistema_fixo_incendio} onChange={(v) => set('sistema_fixo_incendio', v)} /></Field>
+          {form.sistema_fixo_incendio === true && (
+            <Field label="Qual sistema fixo?">
+              <Input value={form.qual_sistema_fixo} onChangeText={(v: string) => set('qual_sistema_fixo', v)} placeholder="Ex: sprinkler, hidrante interno, CO2..." />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>
           <SectionTitle title="💡 Iluminação de Emergência" />
           <Field label="Possui iluminação de emergência?"><SimNao value={form.iluminacao_emergencia} onChange={(v) => set('iluminacao_emergencia', v)} /></Field>
+          {form.iluminacao_emergencia === true && (
+            <Field label="Observação sobre iluminação">
+              <Input value={form.obs_iluminacao} onChangeText={(v: string) => set('obs_iluminacao', v)} placeholder="Ex: só corredor principal, em trâmite..." />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>
           <SectionTitle title="💧 Hidrante e Reserva d'Água" />
           <Field label="Possui hidrante ou reserva d'água para combate a incêndio?"><SimNao value={form.hidrante_reserva} onChange={(v) => set('hidrante_reserva', v)} /></Field>
+          {form.hidrante_reserva === true && (
+            <Field label="Observação sobre hidrante/reserva">
+              <Input value={form.obs_hidrante} onChangeText={(v: string) => set('obs_hidrante', v)} placeholder="Ex: caixa d'água, hidrante externo..." />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>
           <SectionTitle title="📐 Documentação do Estabelecimento" />
           <Field label="Planta baixa / Croqui disponível?"><SimNao value={form.planta_baixa} onChange={(v) => set('planta_baixa', v)} /></Field>
+          {form.planta_baixa === true && (
+            <Field label="Observação sobre planta/croqui">
+              <Input value={form.obs_planta_baixa} onChangeText={(v: string) => set('obs_planta_baixa', v)} placeholder="Ex: só croqui, em trâmite no CBMAM..." />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -315,6 +348,11 @@ export default function NovaVistoriaTecnica() {
               <Checkbox key={orgao} label={orgao} checked={form.orgao_destino.includes(orgao)} onToggle={() => toggleOrgao(orgao)} />
             ))}
           </Field>
+          {form.orgao_destino.includes('Outros') && (
+            <Field label="Qual órgão?">
+              <Input value={form.qual_orgao_outro} onChangeText={(v: string) => set('qual_orgao_outro', v)} placeholder="Nome do órgão" />
+            </Field>
+          )}
           <Field label="Situação do Imóvel"><BtnGroup options={SITUACOES_IMOVEL} value={form.situacao_imovel} onChange={(v) => set('situacao_imovel', v)} /></Field>
           <Field label="Reavaliação necessária?"><SimNao value={form.reavaliacao} onChange={(v) => set('reavaliacao', v)} /></Field>
         </View>

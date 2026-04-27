@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export const schema = appSchema({
-  version: 2,
+  version: 3,
   tables: [
     tableSchema({
       name: 'cadastros',
@@ -56,6 +56,12 @@ export const schema = appSchema({
         { name: 'qual_doenca_cronica', type: 'string', isOptional: true },
         { name: 'qual_medicamento', type: 'string', isOptional: true },
         { name: 'docs_faltantes', type: 'string', isOptional: true },
+        { name: 'qual_material_construcao', type: 'string', isOptional: true },
+        { name: 'obs_agua_potavel', type: 'string', isOptional: true },
+        { name: 'obs_energia_eletrica', type: 'string', isOptional: true },
+        { name: 'obs_saneamento_basico', type: 'string', isOptional: true },
+        { name: 'obs_coleta_lixo', type: 'string', isOptional: true },
+        { name: 'obs_banheiro', type: 'string', isOptional: true },
         { name: 'rascunho', type: 'boolean' },
         { name: 'sincronizado', type: 'boolean' },
         { name: 'created_at', type: 'number' },
@@ -99,6 +105,12 @@ export const schema = appSchema({
         { name: 'reavaliacao', type: 'boolean', isOptional: true },
         { name: 'nome_vistoriador', type: 'string', isOptional: true },
         { name: 'matricula', type: 'string', isOptional: true },
+        { name: 'qual_tipificacao_outro', type: 'string', isOptional: true },
+        { name: 'qual_material_outro', type: 'string', isOptional: true },
+        { name: 'qual_estrutura_outro', type: 'string', isOptional: true },
+        { name: 'qual_orgao_outro', type: 'string', isOptional: true },
+        { name: 'obs_risco_estrutural', type: 'string', isOptional: true },
+        { name: 'obs_risco_hidrologico', type: 'string', isOptional: true },
         { name: 'fotos', type: 'string', isOptional: true },
         { name: 'rascunho', type: 'boolean' },
         { name: 'sincronizado', type: 'boolean' },
@@ -147,6 +159,13 @@ export const schema = appSchema({
         { name: 'situacao_imovel', type: 'string', isOptional: true },
         { name: 'reavaliacao', type: 'boolean', isOptional: true },
         { name: 'matricula', type: 'string', isOptional: true },
+        { name: 'nome_vistoriador', type: 'string', isOptional: true },
+        { name: 'qual_extintor_outro', type: 'string', isOptional: true },
+        { name: 'qual_orgao_outro', type: 'string', isOptional: true },
+        { name: 'qual_sistema_fixo', type: 'string', isOptional: true },
+        { name: 'obs_hidrante', type: 'string', isOptional: true },
+        { name: 'obs_iluminacao', type: 'string', isOptional: true },
+        { name: 'obs_planta_baixa', type: 'string', isOptional: true },
         { name: 'rascunho', type: 'boolean' },
         { name: 'sincronizado', type: 'boolean' },
         { name: 'created_at', type: 'number' },

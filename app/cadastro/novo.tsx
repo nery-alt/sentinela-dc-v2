@@ -101,7 +101,8 @@ function calcIdade(dataNasc: string): number | null {
 
 export default function NovoCadastro() {
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const rascunhoId = useRef<string | null>(null);
+  const editando = !!id;
+  const rascunhoId = useRef<string | null>(id || null);
   const autoSaveTimer = useRef<any>(null);
 
   const [form, setForm] = useState({
@@ -121,7 +122,55 @@ export default function NovoCadastro() {
     prioridade: '', observacoes: '',
     qual_desastre: '', qual_ajuda_defesa_civil: '', qual_deficiencia: '',
     qual_doenca_cronica: '', qual_medicamento: '', docs_faltantes: '',
+    qual_material_construcao: '',
+    obs_agua_potavel: '', obs_energia_eletrica: '', obs_saneamento_basico: '',
+    obs_coleta_lixo: '', obs_banheiro: '',
   });
+
+  useEffect(() => {
+    if (id) {
+      database.collections.get('cadastros').find(id).then((r: any) => {
+        const raw = r._raw;
+        setForm({
+          nome: raw.nome || '', cpf: raw.cpf || '', rg: raw.rg || '',
+          data_nascimento: raw.data_nascimento || '', genero: raw.genero || '',
+          estado_civil: raw.estado_civil || '', nacionalidade: raw.nacionalidade || 'Brasileira',
+          naturalidade: raw.naturalidade || '', escolaridade: raw.escolaridade || '',
+          profissao: raw.profissao || '', telefone: raw.telefone || '', email: raw.email || '',
+          endereco: raw.endereco || '', bairro: raw.bairro || '', municipio: raw.municipio || '',
+          cep: raw.cep || '', ponto_referencia: raw.ponto_referencia || '',
+          gps_lat: raw.gps_lat || null, gps_lng: raw.gps_lng || null,
+          num_pessoas_familia: String(raw.num_pessoas_familia || 1),
+          responsavel_familiar: raw.responsavel_familiar ?? null,
+          renda_familiar: raw.renda_familiar || '', programa_social: raw.programa_social || '',
+          tempo_mora_local: raw.tempo_mora_local || '', num_comodos: String(raw.num_comodos || ''),
+          tipo_moradia: raw.tipo_moradia || '', material_construcao: raw.material_construcao || '',
+          possui_banheiro: raw.possui_banheiro ?? null,
+          area_risco: raw.area_risco ?? null, afetado_desastre: raw.afetado_desastre ?? null,
+          ajuda_defesa_civil: raw.ajuda_defesa_civil ?? null,
+          agua_potavel: raw.agua_potavel ?? null, energia_eletrica: raw.energia_eletrica ?? null,
+          saneamento_basico: raw.saneamento_basico ?? null, coleta_lixo: raw.coleta_lixo ?? null,
+          deficiencia: raw.deficiencia ?? null, doenca_cronica: raw.doenca_cronica ?? null,
+          medicamento_continuo: raw.medicamento_continuo ?? null,
+          documentos_completos: raw.documentos_completos ?? null,
+          assistencia_imediata: raw.assistencia_imediata ?? null,
+          prioridade: raw.prioridade || '', observacoes: raw.observacoes || '',
+          qual_desastre: raw.qual_desastre || '',
+          qual_ajuda_defesa_civil: raw.qual_ajuda_defesa_civil || '',
+          qual_deficiencia: raw.qual_deficiencia || '',
+          qual_doenca_cronica: raw.qual_doenca_cronica || '',
+          qual_medicamento: raw.qual_medicamento || '',
+          docs_faltantes: raw.docs_faltantes || '',
+          qual_material_construcao: raw.qual_material_construcao || '',
+          obs_agua_potavel: raw.obs_agua_potavel || '',
+          obs_energia_eletrica: raw.obs_energia_eletrica || '',
+          obs_saneamento_basico: raw.obs_saneamento_basico || '',
+          obs_coleta_lixo: raw.obs_coleta_lixo || '',
+          obs_banheiro: raw.obs_banheiro || '',
+        });
+      }).catch(() => {});
+    }
+  }, [id]);
 
   const idade = calcIdade(form.data_nascimento);
 
@@ -156,17 +205,17 @@ export default function NovoCadastro() {
     if (!form.cpf.trim()) { Alert.alert('Atenção', 'CPF é obrigatório.'); return; }
     try {
       await database.write(async () => {
-        const collection = database.collections.get('cadastros');
+        const col = database.collections.get('cadastros');
         const data = { ...form, num_pessoas_familia: parseInt(form.num_pessoas_familia) || 1, num_comodos: parseInt(form.num_comodos) || 0, idade: idade || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
-          const record = await collection.find(rascunhoId.current);
-          await record.update((r: any) => { Object.assign(r._raw, data); });
+          const rec = await col.find(rascunhoId.current);
+          await rec.update((r: any) => { Object.keys(data).forEach(key => { r._raw[key] = (data as any)[key]; }); });
         } else {
-          await collection.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
+          await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
         }
       });
       Alert.alert('Sucesso', 'Cadastro salvo com sucesso!', [{ text: 'OK', onPress: () => router.back() }]);
-    } catch (e) { Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.'); }
+    } catch (e) { console.error('Erro ao salvar:', e); Alert.alert('Erro', 'Não foi possível salvar.'); }
   }
 
   async function capturaGPS() {
@@ -197,7 +246,7 @@ export default function NovoCadastro() {
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => router.back()}><Text style={styles.backBtn}>← Voltar</Text></TouchableOpacity>
-          <Text style={styles.topTitle}>Novo Cadastro</Text>
+          <Text style={styles.topTitle}>{editando ? 'Editar Cadastro' : 'Novo Cadastro'}</Text>
           <Text style={styles.autoSaveHint}>● Rascunho automático</Text>
         </View>
 
@@ -260,7 +309,17 @@ export default function NovoCadastro() {
           </View>
           <Field label="Tipo de Moradia"><BtnGroup options={TIPOS_MORADIA} value={form.tipo_moradia} onChange={(v) => set('tipo_moradia', v)} /></Field>
           <Field label="Material de Construção"><BtnGroup options={MATERIAIS} value={form.material_construcao} onChange={(v) => set('material_construcao', v)} /></Field>
+          {form.material_construcao === 'Outro' && (
+            <Field label="Qual material?">
+              <Input value={form.qual_material_construcao} onChangeText={(v: string) => set('qual_material_construcao', v)} placeholder="Descreva o material" />
+            </Field>
+          )}
           <Field label="Possui Banheiro?"><SimNao value={form.possui_banheiro} onChange={(v) => set('possui_banheiro', v)} /></Field>
+          {form.possui_banheiro === false && (
+            <Field label="Observação sobre banheiro">
+              <Input value={form.obs_banheiro} onChangeText={(v: string) => set('obs_banheiro', v)} placeholder="Ex: sanitário externo, sem instalação..." />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -287,9 +346,29 @@ export default function NovoCadastro() {
         <View style={styles.section}>
           <SectionTitle title="🔌 Infraestrutura" />
           <Field label="Possui Água Potável?"><SimNao value={form.agua_potavel} onChange={(v) => set('agua_potavel', v)} /></Field>
+          {form.agua_potavel === false && (
+            <Field label="Observação sobre água potável">
+              <Input value={form.obs_agua_potavel} onChangeText={(v: string) => set('obs_agua_potavel', v)} placeholder="Ex: poço, rio, cisterna..." />
+            </Field>
+          )}
           <Field label="Possui Energia Elétrica?"><SimNao value={form.energia_eletrica} onChange={(v) => set('energia_eletrica', v)} /></Field>
+          {form.energia_eletrica === false && (
+            <Field label="Observação sobre energia elétrica">
+              <Input value={form.obs_energia_eletrica} onChangeText={(v: string) => set('obs_energia_eletrica', v)} placeholder="Ex: gerador, sem energia..." />
+            </Field>
+          )}
           <Field label="Possui Saneamento Básico?"><SimNao value={form.saneamento_basico} onChange={(v) => set('saneamento_basico', v)} /></Field>
+          {form.saneamento_basico === false && (
+            <Field label="Observação sobre saneamento">
+              <Input value={form.obs_saneamento_basico} onChangeText={(v: string) => set('obs_saneamento_basico', v)} placeholder="Ex: fossa, rio..." />
+            </Field>
+          )}
           <Field label="Possui Coleta de Lixo?"><SimNao value={form.coleta_lixo} onChange={(v) => set('coleta_lixo', v)} /></Field>
+          {form.coleta_lixo === false && (
+            <Field label="Observação sobre coleta de lixo">
+              <Input value={form.obs_coleta_lixo} onChangeText={(v: string) => set('obs_coleta_lixo', v)} placeholder="Ex: queima, descarte irregular..." />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>

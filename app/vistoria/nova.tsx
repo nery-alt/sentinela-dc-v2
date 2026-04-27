@@ -87,6 +87,8 @@ const FORM_INICIAL = {
   tipo_estrutura: '', risco_estrutural: '', risco_hidrologico: '',
   orgao_destino: [] as string[], situacao_imovel: '', reavaliacao: null as boolean | null,
   nome_vistoriador: '', matricula: '',
+  qual_tipificacao_outro: '', qual_material_outro: '', qual_estrutura_outro: '',
+  qual_orgao_outro: '', obs_risco_estrutural: '', obs_risco_hidrologico: '',
 };
 
 export default function NovaVistoria() {
@@ -101,7 +103,7 @@ export default function NovaVistoria() {
       database.collections.get('vistorias').find(id).then((r: any) => {
         const raw = r._raw;
         setForm({
-          nome_solicitante: r.nome_solicitante || '',
+          nome_solicitante: raw.nome_solicitante || '',
           cpf: raw.cpf || '', rg: raw.rg || '', telefone: raw.telefone || '',
           email: raw.email || '', endereco: raw.endereco || '',
           bairro: raw.bairro || '', municipio: raw.municipio || '',
@@ -119,6 +121,12 @@ export default function NovaVistoria() {
           orgao_destino: raw.orgao_destino ? JSON.parse(raw.orgao_destino) : [],
           situacao_imovel: raw.situacao_imovel || '', reavaliacao: raw.reavaliacao ?? null,
           nome_vistoriador: raw.nome_vistoriador || '', matricula: raw.matricula || '',
+          qual_tipificacao_outro: raw.qual_tipificacao_outro || '',
+          qual_material_outro: raw.qual_material_outro || '',
+          qual_estrutura_outro: raw.qual_estrutura_outro || '',
+          qual_orgao_outro: raw.qual_orgao_outro || '',
+          obs_risco_estrutural: raw.obs_risco_estrutural || '',
+          obs_risco_hidrologico: raw.obs_risco_hidrologico || '',
         });
       }).catch(() => {});
     }
@@ -166,13 +174,13 @@ export default function NovaVistoria() {
         const data = { ...form, orgao_destino: JSON.stringify(form.orgao_destino), desabrigados: parseInt(form.desabrigados) || 0, desalojados: parseInt(form.desalojados) || 0, pessoas_afetadas: parseInt(form.pessoas_afetadas) || 0, familias_afetadas: parseInt(form.familias_afetadas) || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
-          await rec.update((r: any) => { Object.assign(r._raw, data); });
+          await rec.update((r: any) => { Object.keys(data).forEach(key => { r._raw[key] = (data as any)[key]; }); });
         } else {
           await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
         }
       });
       Alert.alert('Sucesso', 'Vistoria salva!', [{ text: 'OK', onPress: () => router.back() }]);
-    } catch (e) { Alert.alert('Erro', 'Não foi possível salvar.'); }
+    } catch (e) { console.error('Erro ao salvar:', e); Alert.alert('Erro', 'Não foi possível salvar.'); }
   }
   async function capturaGPS() {
     const { status } = await Location.requestForegroundPermissionsAsync();
@@ -233,6 +241,11 @@ export default function NovaVistoria() {
           <Field label="Tipificação *">
             <BtnGroup options={TIPIFICACOES} value={form.tipificacao} onChange={(v) => set('tipificacao', v)} />
           </Field>
+          {form.tipificacao === 'Outros' && (
+            <Field label="Qual tipificação?">
+              <Input value={form.qual_tipificacao_outro} onChangeText={(v: string) => set('qual_tipificacao_outro', v)} placeholder="Descreva o tipo de ocorrência" />
+            </Field>
+          )}
           <Field label="Nível de Risco">
             <BtnGroup options={NIVEIS_RISCO} value={form.nivel_risco} onChange={(v) => set('nivel_risco', v)} colorMap={NIVEL_CORES} />
           </Field>
@@ -245,6 +258,11 @@ export default function NovaVistoria() {
           <Field label="Material de Construção">
             <BtnGroup options={MATERIAIS} value={form.material_construcao} onChange={(v) => set('material_construcao', v)} />
           </Field>
+          {form.material_construcao === 'Outros' && (
+            <Field label="Qual material?">
+              <Input value={form.qual_material_outro} onChangeText={(v: string) => set('qual_material_outro', v)} placeholder="Descreva o material" />
+            </Field>
+          )}
           <Field label="Propriedade">
             <BtnGroup options={PROPRIEDADES} value={form.propriedade} onChange={(v) => set('propriedade', v)} />
           </Field>
@@ -271,12 +289,27 @@ export default function NovaVistoria() {
           <Field label="Tipo de Estrutura">
             <BtnGroup options={TIPOS_ESTRUTURA} value={form.tipo_estrutura} onChange={(v) => set('tipo_estrutura', v)} />
           </Field>
+          {form.tipo_estrutura === 'Outros' && (
+            <Field label="Qual estrutura?">
+              <Input value={form.qual_estrutura_outro} onChangeText={(v: string) => set('qual_estrutura_outro', v)} placeholder="Descreva o tipo de estrutura" />
+            </Field>
+          )}
           <Field label="Risco Estrutural">
             <BtnGroup options={RISCOS_ESTRUT} value={form.risco_estrutural} onChange={(v) => set('risco_estrutural', v)} />
           </Field>
+          {form.risco_estrutural && form.risco_estrutural !== 'Nenhum' && (
+            <Field label="Observação sobre risco estrutural">
+              <Input value={form.obs_risco_estrutural} onChangeText={(v: string) => set('obs_risco_estrutural', v)} placeholder="Descreva o risco observado" />
+            </Field>
+          )}
           <Field label="Risco Hidrológico">
             <BtnGroup options={RISCOS_ESTRUT} value={form.risco_hidrologico} onChange={(v) => set('risco_hidrologico', v)} />
           </Field>
+          {form.risco_hidrologico && form.risco_hidrologico !== 'Nenhum' && (
+            <Field label="Observação sobre risco hidrológico">
+              <Input value={form.obs_risco_hidrologico} onChangeText={(v: string) => set('obs_risco_hidrologico', v)} placeholder="Descreva o risco observado" />
+            </Field>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -286,6 +319,11 @@ export default function NovaVistoria() {
               <Checkbox key={orgao} label={orgao} checked={form.orgao_destino.includes(orgao)} onToggle={() => toggleOrgao(orgao)} />
             ))}
           </Field>
+          {form.orgao_destino.includes('Outros') && (
+            <Field label="Qual órgão?">
+              <Input value={form.qual_orgao_outro} onChangeText={(v: string) => set('qual_orgao_outro', v)} placeholder="Nome do órgão" />
+            </Field>
+          )}
           <Field label="Situação do Imóvel">
             <BtnGroup options={SITUACOES_IMOVEL} value={form.situacao_imovel} onChange={(v) => set('situacao_imovel', v)} />
           </Field>
