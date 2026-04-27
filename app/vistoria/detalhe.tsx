@@ -36,7 +36,7 @@ export default function DetalheVistoria() {
   }, [id]);
 
   async function excluir() {
-    Alert.alert('Excluir vistoria', `Deseja excluir a vistoria de ${vistoria?.nome_solicitante}?`, [
+    Alert.alert('Excluir vistoria', `Deseja excluir a vistoria de ${vistoria?._raw?.nome_solicitante}?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Excluir', style: 'destructive',
@@ -78,9 +78,9 @@ export default function DetalheVistoria() {
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.nameCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{vistoria.nome_solicitante?.charAt(0)?.toUpperCase() || '?'}</Text>
+            <Text style={styles.avatarText}>{vistoria._raw.nome_solicitante?.charAt(0)?.toUpperCase() || '?'}</Text>
           </View>
-          <Text style={styles.nameText}>{vistoria.nome_solicitante}</Text>
+          <Text style={styles.nameText}>{vistoria._raw.nome_solicitante}</Text>
           <View style={styles.badgeRow}>
             {r.rascunho ? (
               <View style={[styles.badge, { backgroundColor: Colors.warning }]}>
