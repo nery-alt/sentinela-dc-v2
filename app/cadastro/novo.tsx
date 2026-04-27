@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Keyboard } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { database } from '../../lib/database';
@@ -46,7 +46,7 @@ function BtnGroup({ options, value, onChange }: { options: string[]; value: stri
         <TouchableOpacity
           key={opt}
           style={[styles.btnOpt, value === opt && styles.btnOptSel]}
-          onPress={() => onChange(opt)}
+          onPress={() => { Keyboard.dismiss(); onChange(opt); }}
         >
           <Text style={[styles.btnOptText, value === opt && styles.btnOptTextSel]}>{opt}</Text>
         </TouchableOpacity>
@@ -58,10 +58,10 @@ function BtnGroup({ options, value, onChange }: { options: string[]; value: stri
 function SimNao({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) {
   return (
     <View style={styles.simNaoRow}>
-      <TouchableOpacity style={[styles.simNaoBtn, value === true && styles.simNaoBtnSel]} onPress={() => onChange(true)}>
+      <TouchableOpacity style={[styles.simNaoBtn, value === true && styles.simNaoBtnSel]} onPress={() => { Keyboard.dismiss(); onChange(true); }}>
         <Text style={[styles.simNaoText, value === true && styles.simNaoTextSel]}>Sim</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={[styles.simNaoBtn, value === false && styles.simNaoBtnSelNo]} onPress={() => onChange(false)}>
+      <TouchableOpacity style={[styles.simNaoBtn, value === false && styles.simNaoBtnSelNo]} onPress={() => { Keyboard.dismiss(); onChange(false); }}>
         <Text style={[styles.simNaoText, value === false && styles.simNaoTextSel]}>Não</Text>
       </TouchableOpacity>
     </View>
@@ -128,9 +128,13 @@ export default function NovoCadastro() {
   });
 
   useEffect(() => {
-    if (id) {
-      database.collections.get('cadastros').find(id).then((r: any) => {
-        const raw = r._raw;
+    if (!id) return;
+    const carregarRegistro = async () => {
+      try {
+        const col = database.collections.get('cadastros');
+        const registro = await col.find(id as string);
+        const raw = registro._raw;
+        const b = (v: any) => v === 1 ? true : v === 0 ? false : null;
         setForm({
           nome: raw.nome || '', cpf: raw.cpf || '', rg: raw.rg || '',
           data_nascimento: raw.data_nascimento || '', genero: raw.genero || '',
@@ -141,19 +145,19 @@ export default function NovoCadastro() {
           cep: raw.cep || '', ponto_referencia: raw.ponto_referencia || '',
           gps_lat: raw.gps_lat || null, gps_lng: raw.gps_lng || null,
           num_pessoas_familia: String(raw.num_pessoas_familia || 1),
-          responsavel_familiar: raw.responsavel_familiar ?? null,
+          responsavel_familiar: b(raw.responsavel_familiar),
           renda_familiar: raw.renda_familiar || '', programa_social: raw.programa_social || '',
           tempo_mora_local: raw.tempo_mora_local || '', num_comodos: String(raw.num_comodos || ''),
           tipo_moradia: raw.tipo_moradia || '', material_construcao: raw.material_construcao || '',
-          possui_banheiro: raw.possui_banheiro ?? null,
-          area_risco: raw.area_risco ?? null, afetado_desastre: raw.afetado_desastre ?? null,
-          ajuda_defesa_civil: raw.ajuda_defesa_civil ?? null,
-          agua_potavel: raw.agua_potavel ?? null, energia_eletrica: raw.energia_eletrica ?? null,
-          saneamento_basico: raw.saneamento_basico ?? null, coleta_lixo: raw.coleta_lixo ?? null,
-          deficiencia: raw.deficiencia ?? null, doenca_cronica: raw.doenca_cronica ?? null,
-          medicamento_continuo: raw.medicamento_continuo ?? null,
-          documentos_completos: raw.documentos_completos ?? null,
-          assistencia_imediata: raw.assistencia_imediata ?? null,
+          possui_banheiro: b(raw.possui_banheiro),
+          area_risco: b(raw.area_risco), afetado_desastre: b(raw.afetado_desastre),
+          ajuda_defesa_civil: b(raw.ajuda_defesa_civil),
+          agua_potavel: b(raw.agua_potavel), energia_eletrica: b(raw.energia_eletrica),
+          saneamento_basico: b(raw.saneamento_basico), coleta_lixo: b(raw.coleta_lixo),
+          deficiencia: b(raw.deficiencia), doenca_cronica: b(raw.doenca_cronica),
+          medicamento_continuo: b(raw.medicamento_continuo),
+          documentos_completos: b(raw.documentos_completos),
+          assistencia_imediata: b(raw.assistencia_imediata),
           prioridade: raw.prioridade || '', observacoes: raw.observacoes || '',
           qual_desastre: raw.qual_desastre || '',
           qual_ajuda_defesa_civil: raw.qual_ajuda_defesa_civil || '',
@@ -168,8 +172,13 @@ export default function NovoCadastro() {
           obs_coleta_lixo: raw.obs_coleta_lixo || '',
           obs_banheiro: raw.obs_banheiro || '',
         });
-      }).catch(() => {});
-    }
+        rascunhoId.current = id as string;
+      } catch (e) {
+        console.error('Erro ao carregar:', e);
+        router.back();
+      }
+    };
+    carregarRegistro();
   }, [id]);
 
   const idade = calcIdade(form.data_nascimento);

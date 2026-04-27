@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Keyboard } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { database } from '../../lib/database';
@@ -38,7 +38,7 @@ function BtnGroup({ options, value, onChange, colorMap }: { options: string[]; v
         const isSelected = value === opt;
         const selColor = colorMap?.[opt] || Colors.primary;
         return (
-          <TouchableOpacity key={opt} style={[styles.btnOpt, isSelected && { backgroundColor: selColor, borderColor: selColor }]} onPress={() => onChange(opt)}>
+          <TouchableOpacity key={opt} style={[styles.btnOpt, isSelected && { backgroundColor: selColor, borderColor: selColor }]} onPress={() => { Keyboard.dismiss(); onChange(opt); }}>
             <Text style={[styles.btnOptText, isSelected && styles.btnOptTextSel]}>{opt}</Text>
           </TouchableOpacity>
         );
@@ -49,10 +49,10 @@ function BtnGroup({ options, value, onChange, colorMap }: { options: string[]; v
 function SimNao({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) {
   return (
     <View style={styles.simNaoRow}>
-      <TouchableOpacity style={[styles.simNaoBtn, value === true && styles.simNaoBtnSim]} onPress={() => onChange(true)}>
+      <TouchableOpacity style={[styles.simNaoBtn, value === true && styles.simNaoBtnSim]} onPress={() => { Keyboard.dismiss(); onChange(true); }}>
         <Text style={[styles.simNaoText, value === true && styles.simNaoTextSel]}>Sim</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={[styles.simNaoBtn, value === false && styles.simNaoBtnNao]} onPress={() => onChange(false)}>
+      <TouchableOpacity style={[styles.simNaoBtn, value === false && styles.simNaoBtnNao]} onPress={() => { Keyboard.dismiss(); onChange(false); }}>
         <Text style={[styles.simNaoText, value === false && styles.simNaoTextSel]}>Não</Text>
       </TouchableOpacity>
     </View>
@@ -60,7 +60,7 @@ function SimNao({ value, onChange }: { value: boolean | null; onChange: (v: bool
 }
 function Checkbox({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
   return (
-    <TouchableOpacity style={styles.checkRow} onPress={onToggle}>
+    <TouchableOpacity style={styles.checkRow} onPress={() => { Keyboard.dismiss(); onToggle(); }}>
       <View style={[styles.checkBox, checked && styles.checkBoxSel]}>
         {checked && <Text style={styles.checkMark}>✓</Text>}
       </View>
@@ -99,9 +99,13 @@ export default function NovaVistoria() {
   const [form, setForm] = useState({ ...FORM_INICIAL });
 
   useEffect(() => {
-    if (id) {
-      database.collections.get('vistorias').find(id).then((r: any) => {
-        const raw = r._raw;
+    if (!id) return;
+    const carregarRegistro = async () => {
+      try {
+        const col = database.collections.get('vistorias');
+        const registro = await col.find(id as string);
+        const raw = registro._raw;
+        const b = (v: any) => v === 1 ? true : v === 0 ? false : null;
         setForm({
           nome_solicitante: raw.nome_solicitante || '',
           cpf: raw.cpf || '', rg: raw.rg || '', telefone: raw.telefone || '',
@@ -119,7 +123,7 @@ export default function NovaVistoria() {
           tipo_estrutura: raw.tipo_estrutura || '', risco_estrutural: raw.risco_estrutural || '',
           risco_hidrologico: raw.risco_hidrologico || '',
           orgao_destino: raw.orgao_destino ? JSON.parse(raw.orgao_destino) : [],
-          situacao_imovel: raw.situacao_imovel || '', reavaliacao: raw.reavaliacao ?? null,
+          situacao_imovel: raw.situacao_imovel || '', reavaliacao: b(raw.reavaliacao),
           nome_vistoriador: raw.nome_vistoriador || '', matricula: raw.matricula || '',
           qual_tipificacao_outro: raw.qual_tipificacao_outro || '',
           qual_material_outro: raw.qual_material_outro || '',
@@ -128,8 +132,13 @@ export default function NovaVistoria() {
           obs_risco_estrutural: raw.obs_risco_estrutural || '',
           obs_risco_hidrologico: raw.obs_risco_hidrologico || '',
         });
-      }).catch(() => {});
-    }
+        rascunhoId.current = id as string;
+      } catch (e) {
+        console.error('Erro ao carregar:', e);
+        router.back();
+      }
+    };
+    carregarRegistro();
   }, [id]);
 
   function set(field: string, value: any) {

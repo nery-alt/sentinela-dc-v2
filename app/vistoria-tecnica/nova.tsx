@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Keyboard } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { database } from '../../lib/database';
@@ -22,7 +22,7 @@ function BtnGroup({ options, value, onChange }: { options: string[]; value: stri
   return (
     <View style={styles.btnGroup}>
       {options.map(opt => (
-        <TouchableOpacity key={opt} style={[styles.btnOpt, value === opt && styles.btnOptSel]} onPress={() => onChange(opt)}>
+        <TouchableOpacity key={opt} style={[styles.btnOpt, value === opt && styles.btnOptSel]} onPress={() => { Keyboard.dismiss(); onChange(opt); }}>
           <Text style={[styles.btnOptText, value === opt && styles.btnOptTextSel]}>{opt}</Text>
         </TouchableOpacity>
       ))}
@@ -32,10 +32,10 @@ function BtnGroup({ options, value, onChange }: { options: string[]; value: stri
 function SimNao({ value, onChange }: { value: boolean | null; onChange: (v: boolean) => void }) {
   return (
     <View style={styles.simNaoRow}>
-      <TouchableOpacity style={[styles.simNaoBtn, value === true && styles.simNaoBtnSim]} onPress={() => onChange(true)}>
+      <TouchableOpacity style={[styles.simNaoBtn, value === true && styles.simNaoBtnSim]} onPress={() => { Keyboard.dismiss(); onChange(true); }}>
         <Text style={[styles.simNaoText, value === true && styles.simNaoTextSel]}>Sim</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={[styles.simNaoBtn, value === false && styles.simNaoBtnNao]} onPress={() => onChange(false)}>
+      <TouchableOpacity style={[styles.simNaoBtn, value === false && styles.simNaoBtnNao]} onPress={() => { Keyboard.dismiss(); onChange(false); }}>
         <Text style={[styles.simNaoText, value === false && styles.simNaoTextSel]}>Não</Text>
       </TouchableOpacity>
     </View>
@@ -43,7 +43,7 @@ function SimNao({ value, onChange }: { value: boolean | null; onChange: (v: bool
 }
 function Checkbox({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
   return (
-    <TouchableOpacity style={styles.checkRow} onPress={onToggle}>
+    <TouchableOpacity style={styles.checkRow} onPress={() => { Keyboard.dismiss(); onToggle(); }}>
       <View style={[styles.checkBox, checked && styles.checkBoxSel]}>
         {checked && <Text style={styles.checkMark}>✓</Text>}
       </View>
@@ -102,9 +102,13 @@ export default function NovaVistoriaTecnica() {
   const [form, setForm] = useState({ ...FORM_INICIAL });
 
   useEffect(() => {
-    if (id) {
-      database.collections.get('vistorias_tecnicas').find(id).then((r: any) => {
-        const raw = r._raw;
+    if (!id) return;
+    const carregarRegistro = async () => {
+      try {
+        const col = database.collections.get('vistorias_tecnicas');
+        const registro = await col.find(id as string);
+        const raw = registro._raw;
+        const b = (v: any) => v === 1 ? true : v === 0 ? false : null;
         setForm({
           nome_estabelecimento: raw.nome_estabelecimento || '',
           cnpj: raw.cnpj || '', nome_responsavel: raw.nome_responsavel || '',
@@ -113,22 +117,22 @@ export default function NovaVistoriaTecnica() {
           gps_lat: raw.gps_lat || null, gps_lng: raw.gps_lng || null,
           tipo_estabelecimento: raw.tipo_estabelecimento || '',
           area_total: String(raw.area_total || ''), capacidade_pessoas: String(raw.capacidade_pessoas || ''),
-          possui_extintor: raw.possui_extintor ?? null, qtd_extintores: String(raw.qtd_extintores || ''),
-          tipo_extintor: raw.tipo_extintor || '', extintor_validade: raw.extintor_validade ?? null,
-          extintor_localizacao_ok: raw.extintor_localizacao_ok ?? null,
-          sinalizacao_emergencia: raw.sinalizacao_emergencia ?? null,
-          saida_desobstruida: raw.saida_desobstruida ?? null,
-          qtd_saidas: String(raw.qtd_saidas || ''), rotas_fuga_ok: raw.rotas_fuga_ok ?? null,
-          instalacao_irregular: raw.instalacao_irregular ?? null,
-          possui_glp: raw.possui_glp ?? null, glp_armazenamento_ok: raw.glp_armazenamento_ok ?? null,
-          sistema_fixo_incendio: raw.sistema_fixo_incendio ?? null,
-          iluminacao_emergencia: raw.iluminacao_emergencia ?? null,
-          hidrante_reserva: raw.hidrante_reserva ?? null, planta_baixa: raw.planta_baixa ?? null,
-          apto_alvara: raw.apto_alvara ?? null, necessita_adequacoes: raw.necessita_adequacoes ?? null,
+          possui_extintor: b(raw.possui_extintor), qtd_extintores: String(raw.qtd_extintores || ''),
+          tipo_extintor: raw.tipo_extintor || '', extintor_validade: b(raw.extintor_validade),
+          extintor_localizacao_ok: b(raw.extintor_localizacao_ok),
+          sinalizacao_emergencia: b(raw.sinalizacao_emergencia),
+          saida_desobstruida: b(raw.saida_desobstruida),
+          qtd_saidas: String(raw.qtd_saidas || ''), rotas_fuga_ok: b(raw.rotas_fuga_ok),
+          instalacao_irregular: b(raw.instalacao_irregular),
+          possui_glp: b(raw.possui_glp), glp_armazenamento_ok: b(raw.glp_armazenamento_ok),
+          sistema_fixo_incendio: b(raw.sistema_fixo_incendio),
+          iluminacao_emergencia: b(raw.iluminacao_emergencia),
+          hidrante_reserva: b(raw.hidrante_reserva), planta_baixa: b(raw.planta_baixa),
+          apto_alvara: b(raw.apto_alvara), necessita_adequacoes: b(raw.necessita_adequacoes),
           observacoes: raw.observacoes || '', descricao_tecnica: raw.descricao_tecnica || '',
           protocolo: raw.protocolo || '',
           orgao_destino: raw.orgao_destino ? JSON.parse(raw.orgao_destino) : [],
-          situacao_imovel: raw.situacao_imovel || '', reavaliacao: raw.reavaliacao ?? null,
+          situacao_imovel: raw.situacao_imovel || '', reavaliacao: b(raw.reavaliacao),
           nome_vistoriador: raw.nome_vistoriador || '', matricula: raw.matricula || '',
           qual_extintor_outro: raw.qual_extintor_outro || '',
           qual_orgao_outro: raw.qual_orgao_outro || '',
@@ -137,8 +141,13 @@ export default function NovaVistoriaTecnica() {
           obs_iluminacao: raw.obs_iluminacao || '',
           obs_planta_baixa: raw.obs_planta_baixa || '',
         });
-      }).catch(() => {});
-    }
+        rascunhoId.current = id as string;
+      } catch (e) {
+        console.error('Erro ao carregar:', e);
+        router.back();
+      }
+    };
+    carregarRegistro();
   }, [id]);
 
   function set(field: string, value: any) {
