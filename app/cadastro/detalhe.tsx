@@ -23,11 +23,15 @@ export default function DetalheCadastro() {
   const [cadastro, setCadastro] = useState<any>(null);
 
   useEffect(() => {
-    if (id) {
-      database.collections.get('cadastros').find(id)
-        .then((r: any) => setCadastro(r))
-        .catch(() => router.back());
-    }
+    if (!id) return;
+    const subscription = database.collections
+      .get('cadastros')
+      .findAndObserve(id as string)
+      .subscribe({
+        next: (record: any) => setCadastro(record),
+        error: () => router.back(),
+      });
+    return () => subscription.unsubscribe();
   }, [id]);
 
   async function excluir() {

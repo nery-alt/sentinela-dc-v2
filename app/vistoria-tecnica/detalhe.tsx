@@ -23,11 +23,15 @@ export default function DetalheVistoriaTecnica() {
   const [vistoria, setVistoria] = useState<any>(null);
 
   useEffect(() => {
-    if (id) {
-      database.collections.get('vistorias_tecnicas').find(id)
-        .then((r: any) => setVistoria(r))
-        .catch(() => router.back());
-    }
+    if (!id) return;
+    const subscription = database.collections
+      .get('vistorias_tecnicas')
+      .findAndObserve(id as string)
+      .subscribe({
+        next: (record: any) => setVistoria(record),
+        error: () => router.back(),
+      });
+    return () => subscription.unsubscribe();
   }, [id]);
 
   async function excluir() {
