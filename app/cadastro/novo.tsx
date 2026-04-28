@@ -212,28 +212,24 @@ export default function NovoCadastro() {
   }
 
   async function salvar() {
-    console.log('SALVAR INICIADO — rascunhoId:', rascunhoId.current);
-    console.log('FORM nome:', form.nome, 'cpf:', form.cpf);
     if (!form.nome.trim()) { Alert.alert('Atenção', 'Nome é obrigatório.'); return; }
     if (!form.cpf.trim()) { Alert.alert('Atenção', 'CPF é obrigatório.'); return; }
+    Alert.alert('DEBUG 1', 'rascunhoId: ' + (rascunhoId.current || 'NULL') + '\nnome: ' + form.nome);
     try {
       await database.write(async () => {
         const col = database.collections.get('cadastros');
         if (rascunhoId.current) {
-          console.log('MODO EDIÇÃO — buscando registro:', rascunhoId.current);
           const rec = await col.find(rascunhoId.current);
-          console.log('REGISTRO ENCONTRADO — nome atual:', rec._raw.nome);
+          Alert.alert('DEBUG 2', 'Registro encontrado. Nome atual no banco: ' + rec._raw.nome);
           await rec.update((r: any) => {
             r.nome = form.nome;
             r.cpf = form.cpf;
             r.rascunho = false;
             r.sincronizado = false;
             r.updated_at = Date.now();
-            console.log('UPDATE EXECUTADO — novo nome:', form.nome);
           });
-          console.log('UPDATE CONCLUÍDO');
+          Alert.alert('DEBUG 3', 'Update executado. Novo nome: ' + form.nome);
         } else {
-          console.log('MODO NOVO — criando registro');
           await col.create((r: any) => {
             r.nome = form.nome;
             r.cpf = form.cpf;
@@ -242,14 +238,11 @@ export default function NovoCadastro() {
             r.created_at = Date.now();
             r.updated_at = Date.now();
           });
-          console.log('CREATE CONCLUÍDO');
         }
       });
-      console.log('WRITE CONCLUÍDO SEM ERRO');
-      Alert.alert('Sucesso', 'Cadastro salvo!', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert('DEBUG 4', 'Write concluído sem erro');
     } catch (e) {
-      console.error('ERRO AO SALVAR:', e);
-      Alert.alert('Erro', 'Não foi possível salvar: ' + String(e));
+      Alert.alert('ERRO', 'Erro ao salvar: ' + String(e));
     }
   }
 
