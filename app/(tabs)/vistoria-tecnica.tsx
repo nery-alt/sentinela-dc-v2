@@ -36,6 +36,7 @@ export default function VistoriasTecnicas() {
       <FlatList
         data={filtradas}
         keyExtractor={item => item.id}
+        extraData={vistorias}
         contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={styles.empty}>

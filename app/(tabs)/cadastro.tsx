@@ -48,6 +48,7 @@ export default function Cadastros() {
       <FlatList
         data={filtrados}
         keyExtractor={item => item.id}
+        extraData={cadastros}
         contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={styles.empty}>

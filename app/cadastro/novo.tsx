@@ -103,7 +103,6 @@ export default function NovoCadastro() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const editando = !!id;
   const rascunhoId = useRef<string | null>(id || null);
-  console.log('rascunhoId inicializado:', id || null);
   const autoSaveTimer = useRef<any>(null);
 
   const [form, setForm] = useState({
@@ -130,7 +129,6 @@ export default function NovoCadastro() {
 
   useEffect(() => {
     if (!id) return;
-    console.log('CARREGANDO REGISTRO PARA EDIÇÃO — id:', id);
     const carregarRegistro = async () => {
       try {
         const col = database.collections.get('cadastros');
@@ -214,36 +212,78 @@ export default function NovoCadastro() {
   async function salvar() {
     if (!form.nome.trim()) { Alert.alert('Atenção', 'Nome é obrigatório.'); return; }
     if (!form.cpf.trim()) { Alert.alert('Atenção', 'CPF é obrigatório.'); return; }
-    Alert.alert('DEBUG 1', 'rascunhoId: ' + (rascunhoId.current || 'NULL') + '\nnome: ' + form.nome);
     try {
       await database.write(async () => {
         const col = database.collections.get('cadastros');
+        const data = { ...form, num_pessoas_familia: parseInt(form.num_pessoas_familia) || 1, num_comodos: parseInt(form.num_comodos) || 0, idade: idade || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
-          Alert.alert('DEBUG 2', 'Registro encontrado. Nome atual no banco: ' + rec._raw.nome);
           await rec.update((r: any) => {
             r.nome = form.nome;
             r.cpf = form.cpf;
+            r.rg = form.rg;
+            r.data_nascimento = form.data_nascimento;
+            r.idade = idade || 0;
+            r.genero = form.genero;
+            r.estado_civil = form.estado_civil;
+            r.nacionalidade = form.nacionalidade;
+            r.naturalidade = form.naturalidade;
+            r.escolaridade = form.escolaridade;
+            r.profissao = form.profissao;
+            r.telefone = form.telefone;
+            r.email = form.email;
+            r.endereco = form.endereco;
+            r.bairro = form.bairro;
+            r.municipio = form.municipio;
+            r.cep = form.cep;
+            r.ponto_referencia = form.ponto_referencia;
+            r.gps_lat = form.gps_lat;
+            r.gps_lng = form.gps_lng;
+            r.num_pessoas_familia = parseInt(form.num_pessoas_familia) || 1;
+            r.responsavel_familiar = form.responsavel_familiar;
+            r.renda_familiar = form.renda_familiar;
+            r.programa_social = form.programa_social;
+            r.tempo_mora_local = form.tempo_mora_local;
+            r.num_comodos = parseInt(form.num_comodos) || 0;
+            r.tipo_moradia = form.tipo_moradia;
+            r.material_construcao = form.material_construcao;
+            r.qual_material_construcao = form.qual_material_construcao;
+            r.possui_banheiro = form.possui_banheiro;
+            r.obs_banheiro = form.obs_banheiro;
+            r.area_risco = form.area_risco;
+            r.afetado_desastre = form.afetado_desastre;
+            r.qual_desastre = form.qual_desastre;
+            r.ajuda_defesa_civil = form.ajuda_defesa_civil;
+            r.qual_ajuda_defesa_civil = form.qual_ajuda_defesa_civil;
+            r.agua_potavel = form.agua_potavel;
+            r.obs_agua_potavel = form.obs_agua_potavel;
+            r.energia_eletrica = form.energia_eletrica;
+            r.obs_energia_eletrica = form.obs_energia_eletrica;
+            r.saneamento_basico = form.saneamento_basico;
+            r.obs_saneamento_basico = form.obs_saneamento_basico;
+            r.coleta_lixo = form.coleta_lixo;
+            r.obs_coleta_lixo = form.obs_coleta_lixo;
+            r.deficiencia = form.deficiencia;
+            r.qual_deficiencia = form.qual_deficiencia;
+            r.doenca_cronica = form.doenca_cronica;
+            r.qual_doenca_cronica = form.qual_doenca_cronica;
+            r.medicamento_continuo = form.medicamento_continuo;
+            r.qual_medicamento = form.qual_medicamento;
+            r.documentos_completos = form.documentos_completos;
+            r.docs_faltantes = form.docs_faltantes;
+            r.assistencia_imediata = form.assistencia_imediata;
+            r.prioridade = form.prioridade;
+            r.observacoes = form.observacoes;
             r.rascunho = false;
             r.sincronizado = false;
             r.updated_at = Date.now();
           });
-          Alert.alert('DEBUG 3', 'Update executado. Novo nome: ' + form.nome);
         } else {
-          await col.create((r: any) => {
-            r.nome = form.nome;
-            r.cpf = form.cpf;
-            r.rascunho = false;
-            r.sincronizado = false;
-            r.created_at = Date.now();
-            r.updated_at = Date.now();
-          });
+          await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
         }
       });
-      Alert.alert('DEBUG 4', 'Write concluído sem erro');
-    } catch (e) {
-      Alert.alert('ERRO', 'Erro ao salvar: ' + String(e));
-    }
+      Alert.alert('Sucesso', 'Cadastro salvo com sucesso!', [{ text: 'OK', onPress: () => router.back() }]);
+    } catch (e) { console.error('Erro ao salvar:', e); Alert.alert('Erro', 'Não foi possível salvar.'); }
   }
 
   async function capturaGPS() {
