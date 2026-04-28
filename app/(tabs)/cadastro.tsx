@@ -9,8 +9,8 @@ export default function Cadastros() {
   const [busca, setBusca] = useState('');
 
   const filtrados = cadastros.filter(c =>
-    c.nome?.toLowerCase().includes(busca.toLowerCase()) ||
-    c.cpf?.includes(busca)
+    c._raw.nome?.toLowerCase().includes(busca.toLowerCase()) ||
+    c._raw.cpf?.includes(busca)
   );
 
   function badgeColor(rascunho: boolean, prioridade: string) {
@@ -58,11 +58,11 @@ export default function Cadastros() {
         }
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.card} onPress={() => router.push(`/cadastro/detalhe?id=${item.id}`)}>
-            <Text style={styles.cardName}>{item.nome}</Text>
-            <Text style={styles.cardDetail}>CPF {item.cpf} · {item.num_pessoas_familia || 1} pessoa{(item.num_pessoas_familia || 1) > 1 ? 's' : ''}</Text>
-            <Text style={styles.cardDetail}>{item.bairro || 'Bairro não informado'} · {item.municipio || 'Município não informado'}</Text>
-            <View style={[styles.badge, { backgroundColor: badgeColor(item.rascunho, item.prioridade) }]}>
-              <Text style={styles.badgeText}>{badgeText(item.rascunho, item.prioridade, item.assistencia_imediata)}</Text>
+            <Text style={styles.cardName}>{item._raw.nome}</Text>
+            <Text style={styles.cardDetail}>CPF {item._raw.cpf} · {item._raw.num_pessoas_familia || 1} pessoa{(item._raw.num_pessoas_familia || 1) > 1 ? 's' : ''}</Text>
+            <Text style={styles.cardDetail}>{item._raw.bairro || 'Bairro não informado'} · {item._raw.municipio || 'Município não informado'}</Text>
+            <View style={[styles.badge, { backgroundColor: badgeColor(item._raw.rascunho, item._raw.prioridade) }]}>
+              <Text style={styles.badgeText}>{badgeText(item._raw.rascunho, item._raw.prioridade, item._raw.assistencia_imediata)}</Text>
             </View>
           </TouchableOpacity>
         )}
