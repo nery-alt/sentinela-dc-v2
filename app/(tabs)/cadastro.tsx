@@ -5,7 +5,7 @@ import { Colors } from '../../constants/colors';
 import { useCollection } from '../../hooks/useRecord';
 
 export default function Cadastros() {
-  const cadastros = useCollection('cadastros');
+  const { records: cadastros, tick } = useCollection('cadastros');
   const [busca, setBusca] = useState('');
 
   const filtrados = cadastros.filter(c =>
@@ -48,7 +48,7 @@ export default function Cadastros() {
       <FlatList
         data={filtrados}
         keyExtractor={item => item.id}
-        extraData={cadastros}
+        extraData={tick}
         contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={styles.empty}>

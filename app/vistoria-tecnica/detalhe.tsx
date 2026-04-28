@@ -20,7 +20,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function DetalheVistoriaTecnica() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const vistoria = useRecord('vistorias_tecnicas', id);
+  const { record: vistoria } = useRecord('vistorias_tecnicas', id);
 
   async function excluir() {
     Alert.alert('Excluir vistoria técnica', `Deseja excluir a vistoria de ${vistoria?._raw?.nome_estabelecimento}?`, [

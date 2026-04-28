@@ -5,7 +5,7 @@ import { Colors } from '../../constants/colors';
 import { useCollection } from '../../hooks/useRecord';
 
 export default function VistoriasTecnicas() {
-  const vistorias = useCollection('vistorias_tecnicas');
+  const { records: vistorias, tick } = useCollection('vistorias_tecnicas');
   const [busca, setBusca] = useState('');
 
   const filtradas = vistorias.filter(v =>
@@ -36,7 +36,7 @@ export default function VistoriasTecnicas() {
       <FlatList
         data={filtradas}
         keyExtractor={item => item.id}
-        extraData={vistorias}
+        extraData={tick}
         contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={styles.empty}>

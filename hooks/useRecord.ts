@@ -3,21 +3,26 @@ import { database } from '../lib/database';
 
 export function useCollection(tableName: string) {
   const [records, setRecords] = useState<any[]>([]);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     const subscription = database.collections
       .get(tableName)
       .query()
       .observe()
-      .subscribe((r: any[]) => setRecords(r));
+      .subscribe((r: any[]) => {
+        setRecords(r.map(rec => rec));
+        setTick(t => t + 1);
+      });
     return () => subscription.unsubscribe();
   }, [tableName]);
 
-  return records;
+  return { records, tick };
 }
 
 export function useRecord(tableName: string, id: string | undefined) {
   const [record, setRecord] = useState<any>(null);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     if (!id) return;
@@ -25,11 +30,14 @@ export function useRecord(tableName: string, id: string | undefined) {
       .get(tableName)
       .findAndObserve(id)
       .subscribe({
-        next: (r: any) => setRecord(r),
+        next: (r: any) => {
+          setRecord(r);
+          setTick(t => t + 1);
+        },
         error: () => setRecord(null),
       });
     return () => subscription.unsubscribe();
   }, [tableName, id]);
 
-  return record;
+  return { record, tick };
 }

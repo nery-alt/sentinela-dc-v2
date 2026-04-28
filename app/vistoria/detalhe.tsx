@@ -25,7 +25,7 @@ const NIVEL_CORES: Record<string, string> = {
 
 export default function DetalheVistoria() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const vistoria = useRecord('vistorias', id);
+  const { record: vistoria } = useRecord('vistorias', id);
 
   async function excluir() {
     Alert.alert('Excluir vistoria', `Deseja excluir a vistoria de ${vistoria?._raw?.nome_solicitante}?`, [

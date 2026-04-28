@@ -12,7 +12,7 @@ const NIVEL_CORES: Record<string, string> = {
 };
 
 export default function Vistorias() {
-  const vistorias = useCollection('vistorias');
+  const { records: vistorias, tick } = useCollection('vistorias');
   const [busca, setBusca] = useState('');
 
   const filtradas = vistorias.filter(v =>
@@ -42,7 +42,7 @@ export default function Vistorias() {
       <FlatList
         data={filtradas}
         keyExtractor={item => item.id}
-        extraData={vistorias}
+        extraData={tick}
         contentContainerStyle={{ paddingBottom: 100 }}
         ListEmptyComponent={
           <View style={styles.empty}>

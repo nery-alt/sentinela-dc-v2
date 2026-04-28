@@ -20,7 +20,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function DetalheCadastro() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const cadastro = useRecord('cadastros', id);
+  const { record: cadastro } = useRecord('cadastros', id);
 
   async function excluir() {
     Alert.alert('Excluir cadastro', `Deseja excluir o cadastro de ${cadastro?._raw?.nome}?`, [
