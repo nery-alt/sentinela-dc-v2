@@ -191,7 +191,7 @@ export default function NovaVistoriaTecnica() {
         const data = { ...form, orgao_destino: JSON.stringify(form.orgao_destino), area_total: parseFloat(form.area_total) || 0, capacidade_pessoas: parseInt(form.capacidade_pessoas) || 0, qtd_extintores: parseInt(form.qtd_extintores) || 0, qtd_saidas: parseInt(form.qtd_saidas) || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
-          await rec.update((r: any) => { Object.keys(data).forEach(key => { r._raw[key] = (data as any)[key]; }); });
+          await rec.update((r: any) => { Object.assign(r._raw, data); });
         } else {
           await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
         }

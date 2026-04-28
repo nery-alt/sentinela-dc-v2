@@ -183,7 +183,7 @@ export default function NovaVistoria() {
         const data = { ...form, orgao_destino: JSON.stringify(form.orgao_destino), desabrigados: parseInt(form.desabrigados) || 0, desalojados: parseInt(form.desalojados) || 0, pessoas_afetadas: parseInt(form.pessoas_afetadas) || 0, familias_afetadas: parseInt(form.familias_afetadas) || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
-          await rec.update((r: any) => { Object.keys(data).forEach(key => { r._raw[key] = (data as any)[key]; }); });
+          await rec.update((r: any) => { Object.assign(r._raw, data); });
         } else {
           await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
         }

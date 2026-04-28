@@ -218,7 +218,7 @@ export default function NovoCadastro() {
         const data = { ...form, num_pessoas_familia: parseInt(form.num_pessoas_familia) || 1, num_comodos: parseInt(form.num_comodos) || 0, idade: idade || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
-          await rec.update((r: any) => { Object.keys(data).forEach(key => { r._raw[key] = (data as any)[key]; }); });
+          await rec.update((r: any) => { Object.assign(r._raw, data); });
         } else {
           await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
         }
