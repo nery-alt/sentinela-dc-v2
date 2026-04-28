@@ -183,7 +183,51 @@ export default function NovaVistoria() {
         const data = { ...form, orgao_destino: JSON.stringify(form.orgao_destino), desabrigados: parseInt(form.desabrigados) || 0, desalojados: parseInt(form.desalojados) || 0, pessoas_afetadas: parseInt(form.pessoas_afetadas) || 0, familias_afetadas: parseInt(form.familias_afetadas) || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
-          await rec.update((r: any) => { Object.assign(r._raw, data); });
+          await rec.update((r: any) => {
+            r.nome_solicitante = form.nome_solicitante;
+            r.cpf = form.cpf;
+            r.rg = form.rg;
+            r.telefone = form.telefone;
+            r.email = form.email;
+            r.endereco = form.endereco;
+            r.bairro = form.bairro;
+            r.municipio = form.municipio;
+            r.ponto_referencia = form.ponto_referencia;
+            r.protocolo = form.protocolo;
+            r.gps_lat = form.gps_lat;
+            r.gps_lng = form.gps_lng;
+            r.tipificacao = form.tipificacao;
+            r.qual_tipificacao_outro = form.qual_tipificacao_outro;
+            r.nivel_risco = form.nivel_risco;
+            r.localizacao = form.localizacao;
+            r.tipo_imovel = form.tipo_imovel;
+            r.material_construcao = form.material_construcao;
+            r.qual_material_outro = form.qual_material_outro;
+            r.propriedade = form.propriedade;
+            r.desabrigados = parseInt(form.desabrigados) || 0;
+            r.desalojados = parseInt(form.desalojados) || 0;
+            r.pessoas_afetadas = parseInt(form.pessoas_afetadas) || 0;
+            r.familias_afetadas = parseInt(form.familias_afetadas) || 0;
+            r.danos_materiais = form.danos_materiais;
+            r.endereco_ocorrencia = form.endereco_ocorrencia;
+            r.descricao_situacao = form.descricao_situacao;
+            r.recomendacoes = form.recomendacoes;
+            r.tipo_estrutura = form.tipo_estrutura;
+            r.qual_estrutura_outro = form.qual_estrutura_outro;
+            r.risco_estrutural = form.risco_estrutural;
+            r.obs_risco_estrutural = form.obs_risco_estrutural;
+            r.risco_hidrologico = form.risco_hidrologico;
+            r.obs_risco_hidrologico = form.obs_risco_hidrologico;
+            r.orgao_destino = JSON.stringify(form.orgao_destino);
+            r.qual_orgao_outro = form.qual_orgao_outro;
+            r.situacao_imovel = form.situacao_imovel;
+            r.reavaliacao = form.reavaliacao;
+            r.nome_vistoriador = form.nome_vistoriador;
+            r.matricula = form.matricula;
+            r.rascunho = false;
+            r.sincronizado = false;
+            r.updated_at = Date.now();
+          });
         } else {
           await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
         }

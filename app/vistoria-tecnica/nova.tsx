@@ -191,7 +191,55 @@ export default function NovaVistoriaTecnica() {
         const data = { ...form, orgao_destino: JSON.stringify(form.orgao_destino), area_total: parseFloat(form.area_total) || 0, capacidade_pessoas: parseInt(form.capacidade_pessoas) || 0, qtd_extintores: parseInt(form.qtd_extintores) || 0, qtd_saidas: parseInt(form.qtd_saidas) || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
-          await rec.update((r: any) => { Object.assign(r._raw, data); });
+          await rec.update((r: any) => {
+            r.nome_estabelecimento = form.nome_estabelecimento;
+            r.cnpj = form.cnpj;
+            r.nome_responsavel = form.nome_responsavel;
+            r.cpf_responsavel = form.cpf_responsavel;
+            r.telefone = form.telefone;
+            r.endereco = form.endereco;
+            r.bairro = form.bairro;
+            r.gps_lat = form.gps_lat;
+            r.gps_lng = form.gps_lng;
+            r.tipo_estabelecimento = form.tipo_estabelecimento;
+            r.area_total = parseFloat(form.area_total) || 0;
+            r.capacidade_pessoas = parseInt(form.capacidade_pessoas) || 0;
+            r.possui_extintor = form.possui_extintor;
+            r.qtd_extintores = parseInt(form.qtd_extintores) || 0;
+            r.tipo_extintor = form.tipo_extintor;
+            r.qual_extintor_outro = form.qual_extintor_outro;
+            r.extintor_validade = form.extintor_validade;
+            r.extintor_localizacao_ok = form.extintor_localizacao_ok;
+            r.sinalizacao_emergencia = form.sinalizacao_emergencia;
+            r.saida_desobstruida = form.saida_desobstruida;
+            r.qtd_saidas = parseInt(form.qtd_saidas) || 0;
+            r.rotas_fuga_ok = form.rotas_fuga_ok;
+            r.instalacao_irregular = form.instalacao_irregular;
+            r.possui_glp = form.possui_glp;
+            r.glp_armazenamento_ok = form.glp_armazenamento_ok;
+            r.sistema_fixo_incendio = form.sistema_fixo_incendio;
+            r.qual_sistema_fixo = form.qual_sistema_fixo;
+            r.iluminacao_emergencia = form.iluminacao_emergencia;
+            r.obs_iluminacao = form.obs_iluminacao;
+            r.hidrante_reserva = form.hidrante_reserva;
+            r.obs_hidrante = form.obs_hidrante;
+            r.planta_baixa = form.planta_baixa;
+            r.obs_planta_baixa = form.obs_planta_baixa;
+            r.apto_alvara = form.apto_alvara;
+            r.necessita_adequacoes = form.necessita_adequacoes;
+            r.observacoes = form.observacoes;
+            r.descricao_tecnica = form.descricao_tecnica;
+            r.protocolo = form.protocolo;
+            r.orgao_destino = JSON.stringify(form.orgao_destino);
+            r.qual_orgao_outro = form.qual_orgao_outro;
+            r.situacao_imovel = form.situacao_imovel;
+            r.reavaliacao = form.reavaliacao;
+            r.nome_vistoriador = form.nome_vistoriador;
+            r.matricula = form.matricula;
+            r.rascunho = false;
+            r.sincronizado = false;
+            r.updated_at = Date.now();
+          });
         } else {
           await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
         }
