@@ -104,6 +104,7 @@ export default function NovoCadastro() {
   const editando = !!id;
   const rascunhoId = useRef<string | null>(id || null);
   const autoSaveTimer = useRef<any>(null);
+  const formRef = useRef<any>(null);
 
   const [form, setForm] = useState({
     nome: '', cpf: '', rg: '', data_nascimento: '', genero: '', estado_civil: '',
@@ -126,6 +127,7 @@ export default function NovoCadastro() {
     obs_agua_potavel: '', obs_energia_eletrica: '', obs_saneamento_basico: '',
     obs_coleta_lixo: '', obs_banheiro: '',
   });
+  formRef.current = form;
 
   useEffect(() => {
     if (!id) return;
@@ -194,15 +196,16 @@ export default function NovoCadastro() {
   }
 
   async function salvarRascunho() {
-    if (!form.nome && !form.cpf) return;
+    const f = formRef.current;
+    if (!f?.nome && !f?.cpf) return;
     try {
       await database.write(async () => {
         const collection = database.collections.get('cadastros');
         if (rascunhoId.current) {
           const record = await collection.find(rascunhoId.current);
-          await record.update((r: any) => { Object.assign(r._raw, { ...form, rascunho: true, sincronizado: false, updated_at: Date.now() }); });
+          await record.update((r: any) => { Object.assign(r._raw, { ...f, rascunho: true, sincronizado: false, updated_at: Date.now() }); });
         } else {
-          const record = await collection.create((r: any) => { Object.assign(r._raw, { ...form, rascunho: true, sincronizado: false, created_at: Date.now(), updated_at: Date.now() }); });
+          const record = await collection.create((r: any) => { Object.assign(r._raw, { ...f, rascunho: true, sincronizado: false, created_at: Date.now(), updated_at: Date.now() }); });
           rascunhoId.current = record.id;
         }
       });
@@ -210,6 +213,7 @@ export default function NovoCadastro() {
   }
 
   async function salvar() {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     if (!form.nome.trim()) { Alert.alert('Atenção', 'Nome é obrigatório.'); return; }
     if (!form.cpf.trim()) { Alert.alert('Atenção', 'CPF é obrigatório.'); return; }
     try {
