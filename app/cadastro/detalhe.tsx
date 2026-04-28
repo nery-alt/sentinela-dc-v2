@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
+import { useRecord } from '../../hooks/useRecord';
 
 function Row({ label, value }: { label: string; value?: string | number | boolean | null }) {
   if (value === null || value === undefined || value === '') return null;
@@ -20,19 +20,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function DetalheCadastro() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const [cadastro, setCadastro] = useState<any>(null);
-
-  useEffect(() => {
-    if (!id) return;
-    const subscription = database.collections
-      .get('cadastros')
-      .findAndObserve(id as string)
-      .subscribe({
-        next: (record: any) => setCadastro(record),
-        error: () => router.back(),
-      });
-    return () => subscription.unsubscribe();
-  }, [id]);
+  const cadastro = useRecord('cadastros', id);
 
   async function excluir() {
     Alert.alert('Excluir cadastro', `Deseja excluir o cadastro de ${cadastro?._raw?.nome}?`, [

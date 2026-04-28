@@ -1,18 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'react-native';
 import { router } from 'expo-router';
-import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
+import { useCollection } from '../../hooks/useRecord';
 
 export default function VistoriasTecnicas() {
-  const [vistorias, setVistorias] = useState<any[]>([]);
+  const vistorias = useCollection('vistorias_tecnicas');
   const [busca, setBusca] = useState('');
-
-  useEffect(() => {
-    const sub = database.collections.get('vistorias_tecnicas').query().observe()
-      .subscribe((records: any[]) => setVistorias(records));
-    return () => sub.unsubscribe();
-  }, []);
 
   const filtradas = vistorias.filter(v =>
     v._raw.nome_estabelecimento?.toLowerCase().includes(busca.toLowerCase()) ||

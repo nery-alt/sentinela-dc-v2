@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'react-native';
 import { router } from 'expo-router';
-import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
+import { useCollection } from '../../hooks/useRecord';
 
 const NIVEL_CORES: Record<string, string> = {
   'Baixo': Colors.success,
@@ -12,14 +12,8 @@ const NIVEL_CORES: Record<string, string> = {
 };
 
 export default function Vistorias() {
-  const [vistorias, setVistorias] = useState<any[]>([]);
+  const vistorias = useCollection('vistorias');
   const [busca, setBusca] = useState('');
-
-  useEffect(() => {
-    const sub = database.collections.get('vistorias').query().observe()
-      .subscribe((records: any[]) => setVistorias(records));
-    return () => sub.unsubscribe();
-  }, []);
 
   const filtradas = vistorias.filter(v =>
     v.nome_solicitante?.toLowerCase().includes(busca.toLowerCase()) ||

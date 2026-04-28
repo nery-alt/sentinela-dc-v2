@@ -1,20 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert } from 'react-native';
 import { router } from 'expo-router';
-import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
+import { useCollection } from '../../hooks/useRecord';
 
 export default function Cadastros() {
-  const [cadastros, setCadastros] = useState<any[]>([]);
+  const cadastros = useCollection('cadastros');
   const [busca, setBusca] = useState('');
-
-  useEffect(() => {
-    const subscription = database.collections.get('cadastros')
-      .query()
-      .observe()
-      .subscribe((records: any[]) => setCadastros(records));
-    return () => subscription.unsubscribe();
-  }, []);
 
   const filtrados = cadastros.filter(c =>
     c.nome?.toLowerCase().includes(busca.toLowerCase()) ||
