@@ -9,7 +9,7 @@ export function useCollection(tableName: string) {
     const subscription = database.collections
       .get(tableName)
       .query()
-      .observe()
+      .observeWithColumns(['updated_at'])
       .subscribe((r: any[]) => {
         setRecords(r.map(rec => rec));
         setTick(t => t + 1);
