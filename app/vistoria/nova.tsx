@@ -96,7 +96,9 @@ export default function NovaVistoria() {
   const editando = !!id;
   const rascunhoId = useRef<string | null>(id || null);
   const autoSaveTimer = useRef<any>(null);
+  const formRef = useRef<any>(null);
   const [form, setForm] = useState({ ...FORM_INICIAL });
+  formRef.current = form;
 
   useEffect(() => {
     if (!id) return;
@@ -105,7 +107,7 @@ export default function NovaVistoria() {
         const col = database.collections.get('vistorias');
         const registro = await col.find(id as string);
         const raw = registro._raw;
-        const b = (v: any) => v === 1 ? true : v === 0 ? false : null;
+        const b = (v: any) => v === 1 || v === true ? true : v === 0 || v === false ? false : null;
         setForm({
           nome_solicitante: raw.nome_solicitante || '',
           cpf: raw.cpf || '', rg: raw.rg || '', telefone: raw.telefone || '',
@@ -159,11 +161,12 @@ export default function NovaVistoria() {
     autoSaveTimer.current = setTimeout(() => salvarRascunho(), 2000);
   }
   async function salvarRascunho() {
-    if (!form.nome_solicitante && !form.cpf) return;
+    const f = formRef.current;
+    if (!f?.nome_solicitante && !f?.cpf) return;
     try {
       await database.write(async () => {
         const col = database.collections.get('vistorias');
-        const data = { ...form, orgao_destino: JSON.stringify(form.orgao_destino), desabrigados: parseInt(form.desabrigados) || 0, desalojados: parseInt(form.desalojados) || 0, pessoas_afetadas: parseInt(form.pessoas_afetadas) || 0, familias_afetadas: parseInt(form.familias_afetadas) || 0, rascunho: true, sincronizado: false, updated_at: Date.now() };
+        const data = { ...f, orgao_destino: JSON.stringify(f.orgao_destino), desabrigados: parseInt(f.desabrigados) || 0, desalojados: parseInt(f.desalojados) || 0, pessoas_afetadas: parseInt(f.pessoas_afetadas) || 0, familias_afetadas: parseInt(f.familias_afetadas) || 0, rascunho: true, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
           await rec.update((r: any) => { Object.assign(r._raw, data); });
@@ -175,6 +178,7 @@ export default function NovaVistoria() {
     } catch (e) { console.log('autoSave', e); }
   }
   async function salvar() {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     if (!form.nome_solicitante.trim()) { Alert.alert('Atenção', 'Nome do solicitante é obrigatório.'); return; }
     if (!form.descricao_situacao.trim()) { Alert.alert('Atenção', 'Descrição da situação é obrigatória.'); return; }
     try {

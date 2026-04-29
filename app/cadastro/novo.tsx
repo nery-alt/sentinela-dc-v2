@@ -136,7 +136,7 @@ export default function NovoCadastro() {
         const col = database.collections.get('cadastros');
         const registro = await col.find(id as string);
         const raw = registro._raw;
-        const b = (v: any) => v === 1 ? true : v === 0 ? false : null;
+        const b = (v: any) => v === 1 || v === true ? true : v === 0 || v === false ? false : null;
         setForm({
           nome: raw.nome || '', cpf: raw.cpf || '', rg: raw.rg || '',
           data_nascimento: raw.data_nascimento || '', genero: raw.genero || '',

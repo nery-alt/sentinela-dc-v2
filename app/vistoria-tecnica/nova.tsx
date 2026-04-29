@@ -99,7 +99,9 @@ export default function NovaVistoriaTecnica() {
   const editando = !!id;
   const rascunhoId = useRef<string | null>(id || null);
   const autoSaveTimer = useRef<any>(null);
+  const formRef = useRef<any>(null);
   const [form, setForm] = useState({ ...FORM_INICIAL });
+  formRef.current = form;
 
   useEffect(() => {
     if (!id) return;
@@ -108,7 +110,7 @@ export default function NovaVistoriaTecnica() {
         const col = database.collections.get('vistorias_tecnicas');
         const registro = await col.find(id as string);
         const raw = registro._raw;
-        const b = (v: any) => v === 1 ? true : v === 0 ? false : null;
+        const b = (v: any) => v === 1 || v === true ? true : v === 0 || v === false ? false : null;
         setForm({
           nome_estabelecimento: raw.nome_estabelecimento || '',
           cnpj: raw.cnpj || '', nome_responsavel: raw.nome_responsavel || '',
@@ -168,11 +170,12 @@ export default function NovaVistoriaTecnica() {
     autoSaveTimer.current = setTimeout(() => salvarRascunho(), 2000);
   }
   async function salvarRascunho() {
-    if (!form.nome_estabelecimento) return;
+    const f = formRef.current;
+    if (!f?.nome_estabelecimento) return;
     try {
       await database.write(async () => {
         const col = database.collections.get('vistorias_tecnicas');
-        const data = { ...form, orgao_destino: JSON.stringify(form.orgao_destino), area_total: parseFloat(form.area_total) || 0, capacidade_pessoas: parseInt(form.capacidade_pessoas) || 0, qtd_extintores: parseInt(form.qtd_extintores) || 0, qtd_saidas: parseInt(form.qtd_saidas) || 0, rascunho: true, sincronizado: false, updated_at: Date.now() };
+        const data = { ...f, orgao_destino: JSON.stringify(f.orgao_destino), area_total: parseFloat(f.area_total) || 0, capacidade_pessoas: parseInt(f.capacidade_pessoas) || 0, qtd_extintores: parseInt(f.qtd_extintores) || 0, qtd_saidas: parseInt(f.qtd_saidas) || 0, rascunho: true, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
           await rec.update((r: any) => { Object.assign(r._raw, data); });
@@ -184,6 +187,7 @@ export default function NovaVistoriaTecnica() {
     } catch (e) { console.log('autoSave', e); }
   }
   async function salvar() {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     if (!form.nome_estabelecimento.trim()) { Alert.alert('Atenção', 'Nome do estabelecimento é obrigatório.'); return; }
     try {
       await database.write(async () => {
