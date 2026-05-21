@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Keyboard, ActivityIndicator, Modal, FlatList } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
+import { buscarPessoasSAD, PessoaSAD } from '../../lib/sadApi';
 
 const GENEROS = ['Masculino', 'Feminino', 'Outro', 'Prefiro não informar'];
 const ESTADOS_CIVIS = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União estável'];
@@ -106,6 +107,12 @@ export default function NovoCadastro() {
   const autoSaveTimer = useRef<any>(null);
   const formRef = useRef<any>(null);
 
+  // SAD busca
+  const [sadVisible, setSadVisible] = useState(false);
+  const [sadQuery, setSadQuery] = useState('');
+  const [sadResultados, setSadResultados] = useState<PessoaSAD[]>([]);
+  const [buscandoSAD, setBuscandoSAD] = useState(false);
+
   const [form, setForm] = useState({
     nome: '', cpf: '', rg: '', data_nascimento: '', genero: '', estado_civil: '',
     nacionalidade: 'Brasileira', naturalidade: '', escolaridade: '', profissao: '',
@@ -126,6 +133,7 @@ export default function NovoCadastro() {
     qual_material_construcao: '',
     obs_agua_potavel: '', obs_energia_eletrica: '', obs_saneamento_basico: '',
     obs_coleta_lixo: '', obs_banheiro: '',
+    sad_pessoa_id: '',
   });
   formRef.current = form;
 
@@ -173,6 +181,7 @@ export default function NovoCadastro() {
           obs_saneamento_basico: raw.obs_saneamento_basico || '',
           obs_coleta_lixo: raw.obs_coleta_lixo || '',
           obs_banheiro: raw.obs_banheiro || '',
+          sad_pessoa_id: raw.sad_pessoa_id || '',
         });
         rascunhoId.current = id as string;
       } catch (e) {
@@ -193,6 +202,34 @@ export default function NovoCadastro() {
   function scheduleAutoSave() {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => salvarRascunho(), 2000);
+  }
+
+  async function buscarNoSAD() {
+    if (!sadQuery.trim()) return;
+    setBuscandoSAD(true);
+    try {
+      const resultados = await buscarPessoasSAD(sadQuery.trim());
+      setSadResultados(resultados);
+    } catch (e) {
+      Alert.alert('Erro', 'Não foi possível buscar no SAD.');
+    } finally {
+      setBuscandoSAD(false);
+    }
+  }
+
+  function selecionarPessoaSAD(pessoa: PessoaSAD) {
+    setForm(prev => ({
+      ...prev,
+      nome: pessoa.nome || prev.nome,
+      cpf: pessoa.cpf || prev.cpf,
+      telefone: pessoa.telefone || prev.telefone,
+      endereco: pessoa.endereco || prev.endereco,
+      sad_pessoa_id: pessoa.id,
+    }));
+    setSadVisible(false);
+    setSadQuery('');
+    setSadResultados([]);
+    scheduleAutoSave();
   }
 
   async function salvarRascunho() {
@@ -219,70 +256,46 @@ export default function NovoCadastro() {
     try {
       await database.write(async () => {
         const col = database.collections.get('cadastros');
-        const data = { ...form, num_pessoas_familia: parseInt(form.num_pessoas_familia) || 1, num_comodos: parseInt(form.num_comodos) || 0, idade: idade || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
           await rec.update((r: any) => {
-            r.nome = form.nome;
-            r.cpf = form.cpf;
-            r.rg = form.rg;
-            r.data_nascimento = form.data_nascimento;
-            r.idade = idade || 0;
-            r.genero = form.genero;
-            r.estado_civil = form.estado_civil;
-            r.nacionalidade = form.nacionalidade;
-            r.naturalidade = form.naturalidade;
-            r.escolaridade = form.escolaridade;
-            r.profissao = form.profissao;
-            r.telefone = form.telefone;
-            r.email = form.email;
-            r.endereco = form.endereco;
-            r.bairro = form.bairro;
-            r.municipio = form.municipio;
-            r.cep = form.cep;
+            r.nome = form.nome; r.cpf = form.cpf; r.rg = form.rg;
+            r.data_nascimento = form.data_nascimento; r.idade = idade || 0;
+            r.genero = form.genero; r.estado_civil = form.estado_civil;
+            r.nacionalidade = form.nacionalidade; r.naturalidade = form.naturalidade;
+            r.escolaridade = form.escolaridade; r.profissao = form.profissao;
+            r.telefone = form.telefone; r.email = form.email;
+            r.endereco = form.endereco; r.bairro = form.bairro;
+            r.municipio = form.municipio; r.cep = form.cep;
             r.ponto_referencia = form.ponto_referencia;
-            r.gps_lat = form.gps_lat;
-            r.gps_lng = form.gps_lng;
+            r.gps_lat = form.gps_lat; r.gps_lng = form.gps_lng;
             r.num_pessoas_familia = parseInt(form.num_pessoas_familia) || 1;
             r.responsavel_familiar = form.responsavel_familiar;
-            r.renda_familiar = form.renda_familiar;
-            r.programa_social = form.programa_social;
+            r.renda_familiar = form.renda_familiar; r.programa_social = form.programa_social;
             r.tempo_mora_local = form.tempo_mora_local;
             r.num_comodos = parseInt(form.num_comodos) || 0;
-            r.tipo_moradia = form.tipo_moradia;
-            r.material_construcao = form.material_construcao;
+            r.tipo_moradia = form.tipo_moradia; r.material_construcao = form.material_construcao;
             r.qual_material_construcao = form.qual_material_construcao;
-            r.possui_banheiro = form.possui_banheiro;
-            r.obs_banheiro = form.obs_banheiro;
-            r.area_risco = form.area_risco;
-            r.afetado_desastre = form.afetado_desastre;
+            r.possui_banheiro = form.possui_banheiro; r.obs_banheiro = form.obs_banheiro;
+            r.area_risco = form.area_risco; r.afetado_desastre = form.afetado_desastre;
             r.qual_desastre = form.qual_desastre;
             r.ajuda_defesa_civil = form.ajuda_defesa_civil;
             r.qual_ajuda_defesa_civil = form.qual_ajuda_defesa_civil;
-            r.agua_potavel = form.agua_potavel;
-            r.obs_agua_potavel = form.obs_agua_potavel;
-            r.energia_eletrica = form.energia_eletrica;
-            r.obs_energia_eletrica = form.obs_energia_eletrica;
-            r.saneamento_basico = form.saneamento_basico;
-            r.obs_saneamento_basico = form.obs_saneamento_basico;
-            r.coleta_lixo = form.coleta_lixo;
-            r.obs_coleta_lixo = form.obs_coleta_lixo;
-            r.deficiencia = form.deficiencia;
-            r.qual_deficiencia = form.qual_deficiencia;
-            r.doenca_cronica = form.doenca_cronica;
-            r.qual_doenca_cronica = form.qual_doenca_cronica;
-            r.medicamento_continuo = form.medicamento_continuo;
-            r.qual_medicamento = form.qual_medicamento;
-            r.documentos_completos = form.documentos_completos;
-            r.docs_faltantes = form.docs_faltantes;
-            r.assistencia_imediata = form.assistencia_imediata;
-            r.prioridade = form.prioridade;
+            r.agua_potavel = form.agua_potavel; r.obs_agua_potavel = form.obs_agua_potavel;
+            r.energia_eletrica = form.energia_eletrica; r.obs_energia_eletrica = form.obs_energia_eletrica;
+            r.saneamento_basico = form.saneamento_basico; r.obs_saneamento_basico = form.obs_saneamento_basico;
+            r.coleta_lixo = form.coleta_lixo; r.obs_coleta_lixo = form.obs_coleta_lixo;
+            r.deficiencia = form.deficiencia; r.qual_deficiencia = form.qual_deficiencia;
+            r.doenca_cronica = form.doenca_cronica; r.qual_doenca_cronica = form.qual_doenca_cronica;
+            r.medicamento_continuo = form.medicamento_continuo; r.qual_medicamento = form.qual_medicamento;
+            r.documentos_completos = form.documentos_completos; r.docs_faltantes = form.docs_faltantes;
+            r.assistencia_imediata = form.assistencia_imediata; r.prioridade = form.prioridade;
             r.observacoes = form.observacoes;
-            r.rascunho = false;
-            r.sincronizado = false;
-            r.updated_at = Date.now();
+            r.sad_pessoa_id = form.sad_pessoa_id;
+            r.rascunho = false; r.sincronizado = false; r.updated_at = Date.now();
           });
         } else {
+          const data = { ...form, num_pessoas_familia: parseInt(form.num_pessoas_familia) || 1, num_comodos: parseInt(form.num_comodos) || 0, idade: idade || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
           await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
         }
       });
@@ -315,6 +328,44 @@ export default function NovoCadastro() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {/* Modal busca SAD */}
+      <Modal visible={sadVisible} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>🔍 Buscar no SAD</Text>
+            <View style={styles.modalSearchRow}>
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                value={sadQuery}
+                onChangeText={setSadQuery}
+                placeholder="Nome ou órgão..."
+                placeholderTextColor={Colors.textSecondary}
+                onSubmitEditing={buscarNoSAD}
+              />
+              <TouchableOpacity style={styles.modalBuscarBtn} onPress={buscarNoSAD}>
+                <Text style={styles.modalBuscarText}>Buscar</Text>
+              </TouchableOpacity>
+            </View>
+            {buscandoSAD && <ActivityIndicator color={Colors.primary} style={{ marginVertical: 12 }} />}
+            <FlatList
+              data={sadResultados}
+              keyExtractor={(item) => item.id}
+              style={{ maxHeight: 260 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.sadResultItem} onPress={() => selecionarPessoaSAD(item)}>
+                  <Text style={styles.sadResultNome}>{item.nome}</Text>
+                  <Text style={styles.sadResultSub}>{item.cpf}{item.orgao ? ` · ${item.orgao}` : ''}</Text>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={!buscandoSAD && sadResultados !== null ? <Text style={styles.sadVazio}>Nenhum resultado</Text> : null}
+            />
+            <TouchableOpacity style={styles.modalCancelarBtn} onPress={() => { setSadVisible(false); setSadQuery(''); setSadResultados([]); }}>
+              <Text style={styles.modalCancelarText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 120 }}>
         <View style={styles.topBar}>
           <TouchableOpacity onPress={() => router.back()}><Text style={styles.backBtn}>← Voltar</Text></TouchableOpacity>
@@ -324,6 +375,9 @@ export default function NovoCadastro() {
 
         <View style={styles.section}>
           <SectionTitle title="👤 Dados Pessoais" />
+          <TouchableOpacity style={styles.sadBtn} onPress={() => setSadVisible(true)}>
+            <Text style={styles.sadBtnText}>🔍 Buscar no SAD{form.sad_pessoa_id ? ' ✓ Vinculado' : ''}</Text>
+          </TouchableOpacity>
           <Field label="Nome Completo *"><Input value={form.nome} onChangeText={(v: string) => set('nome', v)} placeholder="Nome completo" /></Field>
           <View style={styles.row}>
             <View style={{ flex: 1 }}><Field label="CPF *"><Input value={form.cpf} onChangeText={(v: string) => set('cpf', applyCPF(v))} placeholder="000.000.000-00" keyboardType="numeric" /></Field></View>
@@ -418,69 +472,35 @@ export default function NovoCadastro() {
         <View style={styles.section}>
           <SectionTitle title="🔌 Infraestrutura" />
           <Field label="Possui Água Potável?"><SimNao value={form.agua_potavel} onChange={(v) => set('agua_potavel', v)} /></Field>
-          {form.agua_potavel === false && (
-            <Field label="Observação sobre água potável">
-              <Input value={form.obs_agua_potavel} onChangeText={(v: string) => set('obs_agua_potavel', v)} placeholder="Ex: poço, rio, cisterna..." />
-            </Field>
-          )}
+          {form.agua_potavel === false && <Field label="Observação sobre água potável"><Input value={form.obs_agua_potavel} onChangeText={(v: string) => set('obs_agua_potavel', v)} placeholder="Ex: poço, rio, cisterna..." /></Field>}
           <Field label="Possui Energia Elétrica?"><SimNao value={form.energia_eletrica} onChange={(v) => set('energia_eletrica', v)} /></Field>
-          {form.energia_eletrica === false && (
-            <Field label="Observação sobre energia elétrica">
-              <Input value={form.obs_energia_eletrica} onChangeText={(v: string) => set('obs_energia_eletrica', v)} placeholder="Ex: gerador, sem energia..." />
-            </Field>
-          )}
+          {form.energia_eletrica === false && <Field label="Observação sobre energia elétrica"><Input value={form.obs_energia_eletrica} onChangeText={(v: string) => set('obs_energia_eletrica', v)} placeholder="Ex: gerador, sem energia..." /></Field>}
           <Field label="Possui Saneamento Básico?"><SimNao value={form.saneamento_basico} onChange={(v) => set('saneamento_basico', v)} /></Field>
-          {form.saneamento_basico === false && (
-            <Field label="Observação sobre saneamento">
-              <Input value={form.obs_saneamento_basico} onChangeText={(v: string) => set('obs_saneamento_basico', v)} placeholder="Ex: fossa, rio..." />
-            </Field>
-          )}
+          {form.saneamento_basico === false && <Field label="Observação sobre saneamento"><Input value={form.obs_saneamento_basico} onChangeText={(v: string) => set('obs_saneamento_basico', v)} placeholder="Ex: fossa, rio..." /></Field>}
           <Field label="Possui Coleta de Lixo?"><SimNao value={form.coleta_lixo} onChange={(v) => set('coleta_lixo', v)} /></Field>
-          {form.coleta_lixo === false && (
-            <Field label="Observação sobre coleta de lixo">
-              <Input value={form.obs_coleta_lixo} onChangeText={(v: string) => set('obs_coleta_lixo', v)} placeholder="Ex: queima, descarte irregular..." />
-            </Field>
-          )}
+          {form.coleta_lixo === false && <Field label="Observação sobre coleta de lixo"><Input value={form.obs_coleta_lixo} onChangeText={(v: string) => set('obs_coleta_lixo', v)} placeholder="Ex: queima, descarte irregular..." /></Field>}
         </View>
 
         <View style={styles.section}>
           <SectionTitle title="🏥 Saúde" />
           <Field label="Possui alguma deficiência?"><SimNao value={form.deficiencia} onChange={(v) => set('deficiencia', v)} /></Field>
-          {form.deficiencia === true && (
-            <Field label="Qual deficiência?">
-              <Input value={form.qual_deficiencia} onChangeText={(v: string) => set('qual_deficiencia', v)} placeholder="Descreva a deficiência" />
-            </Field>
-          )}
+          {form.deficiencia === true && <Field label="Qual deficiência?"><Input value={form.qual_deficiencia} onChangeText={(v: string) => set('qual_deficiencia', v)} placeholder="Descreva a deficiência" /></Field>}
           <Field label="Possui doença crônica?"><SimNao value={form.doenca_cronica} onChange={(v) => set('doenca_cronica', v)} /></Field>
-          {form.doenca_cronica === true && (
-            <Field label="Qual doença crônica?">
-              <Input value={form.qual_doenca_cronica} onChangeText={(v: string) => set('qual_doenca_cronica', v)} placeholder="Ex: Diabetes, Hipertensão..." />
-            </Field>
-          )}
+          {form.doenca_cronica === true && <Field label="Qual doença crônica?"><Input value={form.qual_doenca_cronica} onChangeText={(v: string) => set('qual_doenca_cronica', v)} placeholder="Ex: Diabetes, Hipertensão..." /></Field>}
           <Field label="Necessita medicamento contínuo?"><SimNao value={form.medicamento_continuo} onChange={(v) => set('medicamento_continuo', v)} /></Field>
-          {form.medicamento_continuo === true && (
-            <Field label="Qual medicamento?">
-              <Input value={form.qual_medicamento} onChangeText={(v: string) => set('qual_medicamento', v)} placeholder="Nome do medicamento" />
-            </Field>
-          )}
+          {form.medicamento_continuo === true && <Field label="Qual medicamento?"><Input value={form.qual_medicamento} onChangeText={(v: string) => set('qual_medicamento', v)} placeholder="Nome do medicamento" /></Field>}
         </View>
 
         <View style={styles.section}>
           <SectionTitle title="📄 Documentação" />
           <Field label="Possui documentos completos?"><SimNao value={form.documentos_completos} onChange={(v) => set('documentos_completos', v)} /></Field>
-          {form.documentos_completos === false && (
-            <Field label="Quais documentos faltam?">
-              <Input value={form.docs_faltantes} onChangeText={(v: string) => set('docs_faltantes', v)} placeholder="Ex: RG, CPF, Certidão..." />
-            </Field>
-          )}
+          {form.documentos_completos === false && <Field label="Quais documentos faltam?"><Input value={form.docs_faltantes} onChangeText={(v: string) => set('docs_faltantes', v)} placeholder="Ex: RG, CPF, Certidão..." /></Field>}
         </View>
 
         <View style={styles.section}>
           <SectionTitle title="🚨 Assistência Imediata" />
           <Field label="Necessita assistência imediata?"><SimNao value={form.assistencia_imediata} onChange={(v) => set('assistencia_imediata', v)} /></Field>
-          {form.assistencia_imediata && (
-            <Field label="Prioridade de Atendimento"><BtnGroup options={PRIORIDADES} value={form.prioridade} onChange={(v) => set('prioridade', v)} /></Field>
-          )}
+          {form.assistencia_imediata && <Field label="Prioridade de Atendimento"><BtnGroup options={PRIORIDADES} value={form.prioridade} onChange={(v) => set('prioridade', v)} /></Field>}
         </View>
 
         <View style={styles.section}>
@@ -534,4 +554,18 @@ const styles = StyleSheet.create({
   saveBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 16, margin: 12, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   offlineHint: { color: Colors.success, fontSize: 12, textAlign: 'center', marginBottom: 20 },
+  sadBtn: { backgroundColor: Colors.surface, borderRadius: 8, padding: 10, borderWidth: 1, borderColor: Colors.primary, marginBottom: 12, alignItems: 'center' },
+  sadBtnText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalBox: { backgroundColor: Colors.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 20, paddingBottom: 36 },
+  modalTitle: { color: Colors.textPrimary, fontSize: 15, fontWeight: '700', marginBottom: 12 },
+  modalSearchRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  modalBuscarBtn: { backgroundColor: Colors.primary, borderRadius: 8, paddingHorizontal: 14, justifyContent: 'center' },
+  modalBuscarText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  sadResultItem: { paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  sadResultNome: { color: Colors.textPrimary, fontSize: 14, fontWeight: '600' },
+  sadResultSub: { color: Colors.textSecondary, fontSize: 12, marginTop: 2 },
+  sadVazio: { color: Colors.textSecondary, fontSize: 13, textAlign: 'center', paddingVertical: 16 },
+  modalCancelarBtn: { marginTop: 14, alignItems: 'center', padding: 10 },
+  modalCancelarText: { color: Colors.danger, fontSize: 14, fontWeight: '600' },
 });

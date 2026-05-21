@@ -58,6 +58,7 @@ export class Cadastro extends Model {
   @text('docs_faltantes') docsFaltantes!: string;
   @field('assistencia_imediata') assistenciaImediata!: boolean;
   @text('prioridade') prioridade!: string;
+  @text('nucleo_familiar') nucleoFamiliar!: string;
   @text('observacoes') observacoes!: string;
   @field('rascunho') rascunho!: boolean;
   @field('sincronizado') sincronizado!: boolean;

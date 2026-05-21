@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
 import { useRecord } from '../../hooks/useRecord';
+import { exportCadastroPdf } from '../../lib/pdf';
 
 function Row({ label, value }: { label: string; value?: string | number | boolean | null }) {
   if (value === null || value === undefined || value === '') return null;
@@ -21,9 +23,22 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function DetalheCadastro() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { record: cadastro } = useRecord('cadastros', id);
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  async function handleExportPdf() {
+    if (!cadastro) return;
+    setExportingPdf(true);
+    try {
+      await exportCadastroPdf(cadastro);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível gerar o PDF.');
+    } finally {
+      setExportingPdf(false);
+    }
+  }
 
   async function excluir() {
-    Alert.alert('Excluir cadastro', `Deseja excluir o cadastro de ${cadastro?._raw?.nome}?`, [
+    Alert.alert('Excluir cadastro', `Deseja excluir o cadastro de ${cadastro?.nome}?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Excluir', style: 'destructive',
@@ -44,7 +59,7 @@ export default function DetalheCadastro() {
     </View>
   );
 
-  const r = cadastro._raw;
+  const r = cadastro;
 
   return (
     <View style={styles.container}>
@@ -61,6 +76,12 @@ export default function DetalheCadastro() {
         </View>
       </View>
 
+      <View style={styles.exportBar}>
+        <TouchableOpacity style={[styles.pdfBtn, exportingPdf && { opacity: 0.5 }]} onPress={handleExportPdf} disabled={exportingPdf}>
+          <Text style={styles.pdfBtnText}>{exportingPdf ? 'Gerando PDF…' : '📄 Exportar PDF'}</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.nameCard}>
           <View style={styles.avatar}>
@@ -75,10 +96,10 @@ export default function DetalheCadastro() {
         <Section title="👤 Dados Pessoais">
           <Row label="CPF" value={r.cpf} />
           <Row label="RG" value={r.rg} />
-          <Row label="Data de Nascimento" value={r.data_nascimento} />
+          <Row label="Data de Nascimento" value={r.dataNascimento} />
           <Row label="Idade" value={r.idade ? `${r.idade} anos` : null} />
           <Row label="Gênero" value={r.genero} />
-          <Row label="Estado Civil" value={r.estado_civil} />
+          <Row label="Estado Civil" value={r.estadoCivil} />
           <Row label="Nacionalidade" value={r.nacionalidade} />
           <Row label="Naturalidade" value={r.naturalidade} />
           <Row label="Escolaridade" value={r.escolaridade} />
@@ -88,71 +109,87 @@ export default function DetalheCadastro() {
         </Section>
 
         <Section title="📍 Endereço">
-          <Row label="Endereço" value={r.endereco} />
-          <Row label="Bairro/Comunidade" value={r.bairro} />
-          <Row label="Município/UF" value={r.municipio} />
-          <Row label="CEP" value={r.cep} />
-          <Row label="Ponto de Referência" value={r.ponto_referencia} />
-          <Row label="GPS" value={r.gps_lat ? `${r.gps_lat?.toFixed(6)}, ${r.gps_lng?.toFixed(6)}` : null} />
+          <Row label="Rua / Nº" value={r.endereco} />
+          <Row label="Bairro" value={r.bairro} />
+          <Row label="Cidade" value={r.municipio} />
         </Section>
 
         <Section title="👨‍👩‍👧 Dados da Família">
-          <Row label="Nº Pessoas na Família" value={r.num_pessoas_familia} />
-          <Row label="Responsável Familiar" value={r.responsavel_familiar} />
-          <Row label="Renda Familiar" value={r.renda_familiar} />
-          <Row label="Programa Social" value={r.programa_social} />
+          <Row label="Nº Pessoas na Família" value={r.numPessoasFamilia} />
+          <Row label="Responsável Familiar" value={r.responsavelFamiliar} />
+          <Row label="Renda Familiar" value={r.rendaFamiliar} />
+          <Row label="Programa Social" value={r.programaSocial} />
         </Section>
 
         <Section title="🏠 Moradia">
-          <Row label="Tempo que mora no local" value={r.tempo_mora_local} />
-          <Row label="Nº de Cômodos" value={r.num_comodos} />
-          <Row label="Tipo de Moradia" value={r.tipo_moradia} />
-          <Row label="Material de Construção" value={r.material_construcao} />
-          {r.material_construcao === 'Outro' && <Row label="Qual material" value={r.qual_material_construcao} />}
-          <Row label="Possui Banheiro" value={r.possui_banheiro} />
-          {r.possui_banheiro === false && <Row label="Obs. banheiro" value={r.obs_banheiro} />}
+          <Row label="Tempo que mora no local" value={r.tempoMoraLocal} />
+          <Row label="Nº de Cômodos" value={r.numComodos} />
+          <Row label="Tipo de Moradia" value={r.tipoMoradia} />
+          <Row label="Material de Construção" value={r.materialConstrucao} />
+          {r.materialConstrucao === 'Outro' && <Row label="Qual material" value={r.qualMaterialConstrucao} />}
+          <Row label="Possui Banheiro" value={r.possuiBanheiro} />
+          {r.possuiBanheiro === false && <Row label="Obs. banheiro" value={r.obsBanheiro} />}
         </Section>
 
         <Section title="⚠️ Situação de Risco">
-          <Row label="Área de Risco" value={r.area_risco} />
-          <Row label="Afetado por desastre" value={r.afetado_desastre} />
-          <Row label="Qual desastre" value={r.qual_desastre} />
+          <Row label="Área de Risco" value={r.areaRisco} />
+          <Row label="Afetado por desastre" value={r.afetadoDesastre} />
+          <Row label="Qual desastre" value={r.qualDesastre} />
         </Section>
 
         <Section title="🤝 Assistência">
-          <Row label="Recebeu ajuda da Defesa Civil" value={r.ajuda_defesa_civil} />
-          <Row label="Qual ajuda" value={r.qual_ajuda_defesa_civil} />
+          <Row label="Recebeu ajuda da Defesa Civil" value={r.ajudaDefesaCivil} />
+          <Row label="Qual ajuda" value={r.qualAjudaDefesaCivil} />
         </Section>
 
         <Section title="🔌 Infraestrutura">
-          <Row label="Água Potável" value={r.agua_potavel} />
-          {r.agua_potavel === false && <Row label="Obs. água" value={r.obs_agua_potavel} />}
-          <Row label="Energia Elétrica" value={r.energia_eletrica} />
-          {r.energia_eletrica === false && <Row label="Obs. energia" value={r.obs_energia_eletrica} />}
-          <Row label="Saneamento Básico" value={r.saneamento_basico} />
-          {r.saneamento_basico === false && <Row label="Obs. saneamento" value={r.obs_saneamento_basico} />}
-          <Row label="Coleta de Lixo" value={r.coleta_lixo} />
-          {r.coleta_lixo === false && <Row label="Obs. coleta" value={r.obs_coleta_lixo} />}
+          <Row label="Água Potável" value={r.aguaPotavel} />
+          {r.aguaPotavel === false && <Row label="Obs. água" value={r.obsAguaPotavel} />}
+          <Row label="Energia Elétrica" value={r.energiaEletrica} />
+          {r.energiaEletrica === false && <Row label="Obs. energia" value={r.obsEnergiaEletrica} />}
+          <Row label="Saneamento Básico" value={r.saneamentoBasico} />
+          {r.saneamentoBasico === false && <Row label="Obs. saneamento" value={r.obsSaneamentoBasico} />}
+          <Row label="Coleta de Lixo" value={r.coletaLixo} />
+          {r.coletaLixo === false && <Row label="Obs. coleta" value={r.obsColetaLixo} />}
         </Section>
 
         <Section title="🏥 Saúde">
           <Row label="Deficiência" value={r.deficiencia} />
-          <Row label="Qual deficiência" value={r.qual_deficiencia} />
-          <Row label="Doença crônica" value={r.doenca_cronica} />
-          <Row label="Qual doença" value={r.qual_doenca_cronica} />
-          <Row label="Medicamento contínuo" value={r.medicamento_continuo} />
-          <Row label="Qual medicamento" value={r.qual_medicamento} />
+          <Row label="Qual deficiência" value={r.qualDeficiencia} />
+          <Row label="Doença crônica" value={r.doencaCronica} />
+          <Row label="Qual doença" value={r.qualDoencaCronica} />
+          <Row label="Medicamento contínuo" value={r.medicamentoContinuo} />
+          <Row label="Qual medicamento" value={r.qualMedicamento} />
         </Section>
 
         <Section title="📄 Documentação">
-          <Row label="Documentos completos" value={r.documentos_completos} />
-          <Row label="Documentos faltantes" value={r.docs_faltantes} />
+          <Row label="Documentos completos" value={r.documentosCompletos} />
+          <Row label="Documentos faltantes" value={r.docsFaltantes} />
         </Section>
 
         <Section title="🚨 Assistência Imediata">
-          <Row label="Necessita assistência imediata" value={r.assistencia_imediata} />
+          <Row label="Necessita assistência imediata" value={r.assistenciaImediata} />
           <Row label="Prioridade" value={r.prioridade} />
         </Section>
+
+        {(() => {
+          if (!r.nucleoFamiliar) return null;
+          let ms: any[] = [];
+          try { ms = JSON.parse(r.nucleoFamiliar); } catch { return null; }
+          if (!ms.length) return null;
+          return (
+            <Section title="👨‍👩‍👧 Núcleo Familiar">
+              {ms.map((m: any, i: number) => (
+                <View key={i} style={styles.membroDetalhe}>
+                  <Text style={styles.membroDetalheNome}>{i + 1}. {m.nome || '—'}</Text>
+                  <Text style={styles.membroDetalheInfo}>
+                    {[m.parentesco, m.idade ? `${m.idade} anos` : null, m.genero === 'M' ? 'Masc.' : m.genero === 'F' ? 'Fem.' : null, m.cpf || null].filter(Boolean).join(' · ')}
+                  </Text>
+                </View>
+              ))}
+            </Section>
+          );
+        })()}
 
         {r.observacoes ? (
           <Section title="📝 Observações">
@@ -186,4 +223,10 @@ const styles = StyleSheet.create({
   rowLabel: { color: Colors.textSecondary, fontSize: 13, flex: 1 },
   rowValue: { color: Colors.textPrimary, fontSize: 13, flex: 1, textAlign: 'right' },
   observacoes: { color: Colors.textPrimary, fontSize: 13, lineHeight: 20 },
+  membroDetalhe: { paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  membroDetalheNome: { color: Colors.textPrimary, fontSize: 13, fontWeight: '500' },
+  membroDetalheInfo: { color: Colors.textSecondary, fontSize: 12, marginTop: 2 },
+  exportBar: { paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  pdfBtn: { alignSelf: 'flex-start', backgroundColor: '#1A4A8C', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: '#3B7BC8' },
+  pdfBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });

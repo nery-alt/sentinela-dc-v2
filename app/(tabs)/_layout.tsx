@@ -13,6 +13,8 @@ export default function TabsLayout() {
       <Tabs.Screen name="cadastro" options={{ title: 'Cadastro', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>👤</Text> }} />
       <Tabs.Screen name="vistoria" options={{ title: 'Vistoria', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>🔍</Text> }} />
       <Tabs.Screen name="vistoria-tecnica" options={{ title: 'Vistoria Técnica', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>📋</Text> }} />
+      <Tabs.Screen name="painel" options={{ title: 'Painel', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>📊</Text> }} />
+      <Tabs.Screen name="configuracoes" options={{ title: 'Config.', tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 20 }}>⚙️</Text> }} />
     </Tabs>
   );
 }

@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
 import { useRecord } from '../../hooks/useRecord';
+import { exportVistoriaPdf } from '../../lib/pdf';
 
 function Row({ label, value }: { label: string; value?: string | number | boolean | null }) {
   if (value === null || value === undefined || value === '' || value === '0' || value === 0) return null;
@@ -26,6 +28,19 @@ const NIVEL_CORES: Record<string, string> = {
 export default function DetalheVistoria() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { record: vistoria } = useRecord('vistorias', id);
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  async function handleExportPdf() {
+    if (!vistoria) return;
+    setExportingPdf(true);
+    try {
+      await exportVistoriaPdf(vistoria._raw);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível gerar o PDF.');
+    } finally {
+      setExportingPdf(false);
+    }
+  }
 
   async function excluir() {
     Alert.alert('Excluir vistoria', `Deseja excluir a vistoria de ${vistoria?._raw?.nome_solicitante}?`, [
@@ -65,6 +80,12 @@ export default function DetalheVistoria() {
             <Text style={styles.deleteBtnText}>Excluir</Text>
           </TouchableOpacity>
         </View>
+      </View>
+
+      <View style={styles.exportBar}>
+        <TouchableOpacity style={[styles.pdfBtn, exportingPdf && { opacity: 0.5 }]} onPress={handleExportPdf} disabled={exportingPdf}>
+          <Text style={styles.pdfBtnText}>{exportingPdf ? 'Gerando PDF…' : '📄 Exportar PDF'}</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
@@ -163,4 +184,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
   rowLabel: { color: Colors.textSecondary, fontSize: 13, flex: 1 },
   rowValue: { color: Colors.textPrimary, fontSize: 13, flex: 1, textAlign: 'right' },
+  exportBar: { paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  pdfBtn: { alignSelf: 'flex-start', backgroundColor: '#1A4A8C', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1, borderColor: '#3B7BC8' },
+  pdfBtnText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });

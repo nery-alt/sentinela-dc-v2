@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Keyboard, Modal } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
+import { buscarPessoasSAD, PessoaSAD } from '../../lib/sadApi';
 
 const SITUACOES_IMOVEL = ['Interditado', 'Parcial', 'Liberado'];
 const ORGAOS = ['SEMDCEP', 'SEMIO', 'CBMAM', 'SEMMA', 'SEMASC', 'Outros'];
@@ -92,6 +93,7 @@ const FORM_INICIAL = {
   nome_vistoriador: '', matricula: '',
   qual_extintor_outro: '', qual_orgao_outro: '', qual_sistema_fixo: '',
   obs_hidrante: '', obs_iluminacao: '', obs_planta_baixa: '',
+  sad_pessoa_id: '',
 };
 
 export default function NovaVistoriaTecnica() {
@@ -102,6 +104,10 @@ export default function NovaVistoriaTecnica() {
   const formRef = useRef<any>(null);
   const [form, setForm] = useState({ ...FORM_INICIAL });
   formRef.current = form;
+  const [sadVisible, setSadVisible] = useState(false);
+  const [sadQuery, setSadQuery] = useState('');
+  const [sadResultados, setSadResultados] = useState<PessoaSAD[] | null>(null);
+  const [buscandoSAD, setBuscandoSAD] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -142,6 +148,7 @@ export default function NovaVistoriaTecnica() {
           obs_hidrante: raw.obs_hidrante || '',
           obs_iluminacao: raw.obs_iluminacao || '',
           obs_planta_baixa: raw.obs_planta_baixa || '',
+          sad_pessoa_id: raw.sad_pessoa_id || '',
         });
         rascunhoId.current = id as string;
       } catch (e) {
@@ -196,53 +203,53 @@ export default function NovaVistoriaTecnica() {
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
           await rec.update((r: any) => {
-            r.nome_estabelecimento = form.nome_estabelecimento;
+            r.nomeEstabelecimento = form.nome_estabelecimento;
             r.cnpj = form.cnpj;
-            r.nome_responsavel = form.nome_responsavel;
-            r.cpf_responsavel = form.cpf_responsavel;
+            r.nomeResponsavel = form.nome_responsavel;
+            r.cpfResponsavel = form.cpf_responsavel;
             r.telefone = form.telefone;
             r.endereco = form.endereco;
             r.bairro = form.bairro;
-            r.gps_lat = form.gps_lat;
-            r.gps_lng = form.gps_lng;
-            r.tipo_estabelecimento = form.tipo_estabelecimento;
-            r.area_total = parseFloat(form.area_total) || 0;
-            r.capacidade_pessoas = parseInt(form.capacidade_pessoas) || 0;
-            r.possui_extintor = form.possui_extintor;
-            r.qtd_extintores = parseInt(form.qtd_extintores) || 0;
-            r.tipo_extintor = form.tipo_extintor;
-            r.qual_extintor_outro = form.qual_extintor_outro;
-            r.extintor_validade = form.extintor_validade;
-            r.extintor_localizacao_ok = form.extintor_localizacao_ok;
-            r.sinalizacao_emergencia = form.sinalizacao_emergencia;
-            r.saida_desobstruida = form.saida_desobstruida;
-            r.qtd_saidas = parseInt(form.qtd_saidas) || 0;
-            r.rotas_fuga_ok = form.rotas_fuga_ok;
-            r.instalacao_irregular = form.instalacao_irregular;
-            r.possui_glp = form.possui_glp;
-            r.glp_armazenamento_ok = form.glp_armazenamento_ok;
-            r.sistema_fixo_incendio = form.sistema_fixo_incendio;
-            r.qual_sistema_fixo = form.qual_sistema_fixo;
-            r.iluminacao_emergencia = form.iluminacao_emergencia;
-            r.obs_iluminacao = form.obs_iluminacao;
-            r.hidrante_reserva = form.hidrante_reserva;
-            r.obs_hidrante = form.obs_hidrante;
-            r.planta_baixa = form.planta_baixa;
-            r.obs_planta_baixa = form.obs_planta_baixa;
-            r.apto_alvara = form.apto_alvara;
-            r.necessita_adequacoes = form.necessita_adequacoes;
+            r.gpsLat = form.gps_lat;
+            r.gpsLng = form.gps_lng;
+            r.tipoEstabelecimento = form.tipo_estabelecimento;
+            r.areaTotal = parseFloat(form.area_total) || 0;
+            r.capacidadePessoas = parseInt(form.capacidade_pessoas) || 0;
+            r.possuiExtintor = form.possui_extintor;
+            r.qtdExtintores = parseInt(form.qtd_extintores) || 0;
+            r.tipoExtintor = form.tipo_extintor;
+            r.qualExtintorOutro = form.qual_extintor_outro;
+            r.extintorValidade = form.extintor_validade;
+            r.extintorLocalizacaoOk = form.extintor_localizacao_ok;
+            r.sinalizacaoEmergencia = form.sinalizacao_emergencia;
+            r.saidaDesobstruida = form.saida_desobstruida;
+            r.qtdSaidas = parseInt(form.qtd_saidas) || 0;
+            r.rotasFugaOk = form.rotas_fuga_ok;
+            r.instalacaoIrregular = form.instalacao_irregular;
+            r.possuiGlp = form.possui_glp;
+            r.glpArmazenamentoOk = form.glp_armazenamento_ok;
+            r.sistemaFixoIncendio = form.sistema_fixo_incendio;
+            r.qualSistemaFixo = form.qual_sistema_fixo;
+            r.iluminacaoEmergencia = form.iluminacao_emergencia;
+            r.obsIluminacao = form.obs_iluminacao;
+            r.hidranteReserva = form.hidrante_reserva;
+            r.obsHidrante = form.obs_hidrante;
+            r.plantaBaixa = form.planta_baixa;
+            r.obsPlantaBaixa = form.obs_planta_baixa;
+            r.aptoAlvara = form.apto_alvara;
+            r.necessitaAdequacoes = form.necessita_adequacoes;
             r.observacoes = form.observacoes;
-            r.descricao_tecnica = form.descricao_tecnica;
+            r.descricaoTecnica = form.descricao_tecnica;
             r.protocolo = form.protocolo;
-            r.orgao_destino = JSON.stringify(form.orgao_destino);
-            r.qual_orgao_outro = form.qual_orgao_outro;
-            r.situacao_imovel = form.situacao_imovel;
+            r.orgaoDestino = JSON.stringify(form.orgao_destino);
+            r.qualOrgaoOutro = form.qual_orgao_outro;
+            r.situacaoImovel = form.situacao_imovel;
             r.reavaliacao = form.reavaliacao;
-            r.nome_vistoriador = form.nome_vistoriador;
+            r.nomeVistoriador = form.nome_vistoriador;
             r.matricula = form.matricula;
+            r.sad_pessoa_id = form.sad_pessoa_id;
             r.rascunho = false;
             r.sincronizado = false;
-            r.updated_at = Date.now();
           });
         } else {
           await col.create((r: any) => { Object.assign(r._raw, { ...data, created_at: Date.now() }); });
@@ -259,6 +266,31 @@ export default function NovaVistoriaTecnica() {
     set('gps_lng', loc.coords.longitude);
     Alert.alert('GPS capturado', `Lat: ${loc.coords.latitude.toFixed(6)}\nLng: ${loc.coords.longitude.toFixed(6)}`);
   }
+  function fecharSAD() { setSadVisible(false); setSadQuery(''); setSadResultados(null); }
+  async function buscarNoSAD() {
+    if (!sadQuery.trim()) return;
+    setBuscandoSAD(true);
+    try {
+      const res = await buscarPessoasSAD(sadQuery.trim());
+      setSadResultados(res);
+    } catch { Alert.alert('Erro', 'Não foi possível conectar ao SAD.'); }
+    finally { setBuscandoSAD(false); }
+  }
+  function selecionarSAD(p: PessoaSAD) {
+    setForm(prev => ({
+      ...prev,
+      nome_estabelecimento: p.nome || prev.nome_estabelecimento,
+      cnpj: p.cpf || prev.cnpj,
+      nome_responsavel: p.nome || prev.nome_responsavel,
+      cpf_responsavel: applyCPF(p.cpf || ''),
+      telefone: applyPhone(p.telefone || ''),
+      endereco: p.endereco || prev.endereco,
+      sad_pessoa_id: p.id,
+    }));
+    scheduleAutoSave();
+    fecharSAD();
+  }
+
   useEffect(() => {
     const b = BackHandler.addEventListener('hardwareBackPress', () => {
       if (form.nome_estabelecimento) {
@@ -290,6 +322,9 @@ export default function NovaVistoriaTecnica() {
 
         <View style={styles.section}>
           <SectionTitle title="🏢 Dados do Estabelecimento" />
+          <TouchableOpacity style={styles.sadBtn} onPress={() => setSadVisible(true)}>
+            <Text style={styles.sadBtnText}>🔍 Buscar no SAD{form.sad_pessoa_id ? ' ✓ Vinculado' : ''}</Text>
+          </TouchableOpacity>
           <Field label="Nome do Estabelecimento *"><Input value={form.nome_estabelecimento} onChangeText={(v: string) => set('nome_estabelecimento', v)} placeholder="Razão social ou nome fantasia" /></Field>
           <Field label="CNPJ"><Input value={form.cnpj} onChangeText={(v: string) => set('cnpj', applyCNPJ(v))} placeholder="00.000.000/0000-00" keyboardType="numeric" /></Field>
           <View style={styles.row}>
@@ -431,6 +466,41 @@ export default function NovaVistoriaTecnica() {
         </TouchableOpacity>
         <Text style={styles.offlineHint}>✓ Salvo offline · Sincroniza quando houver internet</Text>
       </ScrollView>
+
+      <Modal visible={sadVisible} transparent animationType="fade" statusBarTranslucent onRequestClose={fecharSAD}>
+        <View style={styles.sadOverlay}>
+          <View style={styles.sadDialog}>
+            <Text style={styles.sadDialogTitle}>🔍 Buscar no SAD</Text>
+            <TextInput
+              style={styles.sadDialogInput}
+              value={sadQuery}
+              onChangeText={setSadQuery}
+              placeholder="Digite o nome ou órgão"
+              placeholderTextColor={Colors.textSecondary}
+              autoFocus
+              returnKeyType="search"
+              onSubmitEditing={buscarNoSAD}
+            />
+            <TouchableOpacity style={[styles.sadDialogBuscarBtn, buscandoSAD && { opacity: 0.6 }]} onPress={buscarNoSAD} disabled={buscandoSAD}>
+              <Text style={styles.sadDialogBuscarText}>{buscandoSAD ? 'Buscando…' : 'Buscar'}</Text>
+            </TouchableOpacity>
+            <ScrollView style={{ maxHeight: 280 }} keyboardShouldPersistTaps="handled">
+              {sadResultados !== null && sadResultados.length === 0 && (
+                <Text style={styles.sadSemResultados}>Nenhum resultado encontrado.</Text>
+              )}
+              {(sadResultados ?? []).map(p => (
+                <TouchableOpacity key={p.id} style={styles.sadResultItem} onPress={() => selecionarSAD(p)}>
+                  <Text style={styles.sadResultNome}>{p.nome}</Text>
+                  <Text style={styles.sadResultSub}>{p.cpf}{p.orgao ? ` · ${p.orgao}` : ''}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={styles.sadCancelarBtn} onPress={fecharSAD}>
+              <Text style={styles.sadCancelarText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -465,6 +535,20 @@ const styles = StyleSheet.create({
   checkLabel: { color: Colors.textPrimary, fontSize: 14 },
   gpsBtn: { backgroundColor: Colors.background, borderRadius: 8, padding: 11, borderWidth: 0.5, borderColor: Colors.border, marginBottom: 10 },
   gpsBtnText: { color: Colors.primary, fontSize: 13 },
+  sadBtn: { backgroundColor: Colors.background, borderRadius: 8, padding: 11, borderWidth: 0.5, borderColor: Colors.primary, marginBottom: 10 },
+  sadBtnText: { color: Colors.primary, fontSize: 13 },
+  sadOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', padding: 24 },
+  sadDialog: { backgroundColor: Colors.surface, borderRadius: 12, padding: 16 },
+  sadDialogTitle: { color: Colors.textPrimary, fontSize: 15, fontWeight: '600', marginBottom: 12 },
+  sadDialogInput: { backgroundColor: Colors.background, borderRadius: 8, padding: 11, color: Colors.textPrimary, fontSize: 13, borderWidth: 0.5, borderColor: Colors.border, marginBottom: 8 },
+  sadDialogBuscarBtn: { backgroundColor: Colors.primary, borderRadius: 8, padding: 11, alignItems: 'center', marginBottom: 8 },
+  sadDialogBuscarText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  sadResultItem: { paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: Colors.border },
+  sadResultNome: { color: Colors.textPrimary, fontSize: 13, fontWeight: '500' },
+  sadResultSub: { color: Colors.textSecondary, fontSize: 12, marginTop: 2 },
+  sadSemResultados: { color: Colors.textSecondary, fontSize: 13, textAlign: 'center', paddingVertical: 16 },
+  sadCancelarBtn: { marginTop: 8, alignItems: 'center', padding: 8 },
+  sadCancelarText: { color: Colors.danger, fontSize: 13 },
   resultBanner: { borderWidth: 1.5, borderRadius: 10, padding: 14, alignItems: 'center', marginVertical: 10 },
   resultBannerText: { fontSize: 14, fontWeight: 'bold' },
   saveBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 16, margin: 12, alignItems: 'center' },

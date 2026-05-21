@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView, Pressable } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { Colors } from '../../constants/colors';
 
@@ -7,6 +7,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function handleLogin() {
     if (!email || !password) {
@@ -41,14 +42,19 @@ export default function Login() {
             autoCapitalize="none"
           />
           <Text style={styles.label}>Senha</Text>
-          <TextInput
-            style={styles.input}
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-            placeholderTextColor={Colors.textSecondary}
-            secureTextEntry
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={styles.passwordInput}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              placeholderTextColor={Colors.textSecondary}
+              secureTextEntry={!showPassword}
+            />
+            <Pressable onPress={() => setShowPassword(v => !v)} style={styles.eyeBtn}>
+              <Text style={styles.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
+            </Pressable>
+          </View>
           <TouchableOpacity style={styles.btn} onPress={handleLogin} disabled={loading}>
             <Text style={styles.btnText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
           </TouchableOpacity>
@@ -70,6 +76,10 @@ const styles = StyleSheet.create({
   form: { backgroundColor: Colors.surface, borderRadius: 16, padding: 20, borderWidth: 0.5, borderColor: Colors.border },
   label: { color: Colors.textSecondary, fontSize: 13, marginBottom: 6 },
   input: { backgroundColor: Colors.background, borderRadius: 8, padding: 12, color: Colors.textPrimary, fontSize: 14, marginBottom: 16, borderWidth: 0.5, borderColor: Colors.border },
+  passwordContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.background, borderRadius: 8, borderWidth: 0.5, borderColor: Colors.border, marginBottom: 16 },
+  passwordInput: { flex: 1, padding: 12, color: Colors.textPrimary, fontSize: 14 },
+  eyeBtn: { paddingHorizontal: 12, paddingVertical: 12 },
+  eyeIcon: { fontSize: 18 },
   btn: { backgroundColor: Colors.primary, borderRadius: 10, padding: 14, alignItems: 'center', marginTop: 4 },
   btnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   hint: { color: Colors.textSecondary, fontSize: 12, textAlign: 'center', marginTop: 16 },

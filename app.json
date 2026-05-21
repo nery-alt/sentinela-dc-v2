@@ -3,6 +3,7 @@
     "name": "sentinela-dc-v2",
     "slug": "sentinela-dc-v2",
     "version": "1.0.0",
+    "scheme": "sentineladc",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +22,8 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.sentineladcv2"
     },
     "web": {
       "favicon": "./assets/favicon.png"
