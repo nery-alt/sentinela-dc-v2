@@ -2,7 +2,7 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import { Alert } from 'react-native';
 import { getSettings, AppSettings } from '../hooks/useSettings';
-import { uploadPdfParaSAD, registrarDocumentoSAD } from './sadApi';
+import { uploadPdfParaSAD, registrarDocumentoSAD, registrarOcorrenciaSAD, OcorrenciaSAD } from './sadApi';
 
 const CSS = `
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -87,11 +87,21 @@ function sanitizeFileName(s: string): string {
   return s.replace(/[/\\:*?"<>|]/g, '-');
 }
 
+// Formata a data no fuso LOCAL do aparelho como 'YYYY-MM-DD'
+// (evita o off-by-one do UTC em vistorias feitas à noite em Tefé).
+function ymdLocal(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 // Metadados opcionais para envio ao SAD
 type SadMeta = {
   nomeArquivo: string;
   descricao: string;
   pessoaId?: string;
+  ocorrencia?: OcorrenciaSAD;   // quando presente, grava também em ocorrencias
 };
 
 async function printAndShare(html: string, sadMeta: SadMeta): Promise<void> {
@@ -119,7 +129,20 @@ async function printAndShare(html: string, sadMeta: SadMeta): Promise<void> {
               pessoaId: sadMeta.pessoaId,
               descricao: sadMeta.descricao,
             });
-            Alert.alert('SAD', 'Documento enviado com sucesso!');
+
+            // Grava a ocorrência estruturada (mapa + Situação de Emergência).
+            // Em try próprio: se falhar, o PDF JÁ está salvo; avisamos sem alarmar.
+            if (sadMeta.ocorrencia) {
+              try {
+                await registrarOcorrenciaSAD({ ...sadMeta.ocorrencia, documento_url: url });
+                Alert.alert('SAD', 'Documento e ocorrência enviados com sucesso!');
+              } catch (oe: any) {
+                console.error('[SAD] erro ao gravar ocorrência:', oe);
+                Alert.alert('SAD', `PDF salvo. Mas a ocorrência (mapa/SE) não foi gravada:\n${oe.message}`);
+              }
+            } else {
+              Alert.alert('SAD', 'Documento enviado com sucesso!');
+            }
           } catch (e: any) {
             console.error('[SAD] erro ao enviar:', e);
             Alert.alert('Erro', `Não foi possível enviar ao SAD.\n${e.message}`);
@@ -172,12 +195,47 @@ export async function exportVistoriaPdf(r: any): Promise<void> {
   ].join('');
 
   const protoSafe = sanitizeFileName(proto);
+
+  const ocorrencia: OcorrenciaSAD = {
+    sentinela_id: String(r.id),
+    pessoa_id: r.sad_pessoa_id || null,
+    protocolo: r.protocolo ?? null,
+    latitude: r.gps_lat != null ? Number(r.gps_lat) : null,
+    longitude: r.gps_lng != null ? Number(r.gps_lng) : null,
+    endereco: r.endereco ?? null,
+    bairro: r.bairro ?? null,
+    municipio_uf: r.municipio ?? null,
+    ponto_referencia: r.ponto_referencia ?? null,
+    data_vistoria: ymdLocal(r.created_at ? new Date(r.created_at) : new Date()),
+    tipificacao: r.tipificacao ?? null,
+    tipificacao_outro: r.qual_tipificacao_outro ?? null,
+    nivel_risco: r.nivel_risco ?? null,
+    localizacao: r.localizacao ?? null,
+    tipo_imovel: r.tipo_imovel ?? null,
+    material_construcao: r.material_construcao ?? null,
+    propriedade: r.propriedade ?? null,
+    pessoas_afetadas: r.pessoas_afetadas != null ? (Number(r.pessoas_afetadas) || 0) : 0,
+    familias_afetadas: r.familias_afetadas != null ? (Number(r.familias_afetadas) || 0) : 0,
+    descricao_situacao: r.descricao_situacao ?? null,
+    recomendacoes: r.recomendacoes ?? null,
+    tipo_estrutura: r.tipo_estrutura ?? null,
+    risco_estrutural: r.risco_estrutural ?? null,
+    obs_risco_estrutural: r.obs_risco_estrutural ?? null,
+    risco_hidrologico: r.risco_hidrologico ?? null,
+    orgao_destino: orgaos || null,
+    situacao_imovel: r.situacao_imovel ?? null,
+    reavaliacao: r.reavaliacao === true || r.reavaliacao === 'Sim' || r.reavaliacao === 1 || r.reavaliacao === '1',
+    vistoriador_nome: r.nome_vistoriador ?? null,
+    vistoriador_matricula: r.matricula ?? null,
+  };
+
   await printAndShare(
     makeHtml(buildHeader(s, 'Laudo de Vistoria', proto), body, buildSignatures(s, 'Responsável pelo Imóvel / Solicitante')),
     {
       nomeArquivo: `vistoria_${protoSafe}.pdf`,
       descricao: `Laudo de Vistoria — Protocolo ${proto}`,
       pessoaId: r.sad_pessoa_id,
+      ocorrencia,
     },
   );
 }

@@ -5,41 +5,67 @@ export type PessoaSAD = {
   id: string;
   nome: string;
   cpf: string;
+  rg: string;
+  data_nascimento: string;
+  genero: string;
+  estado_civil: string;
   telefone: string;
+  email: string;
   endereco: string;
+  bairro: string;
+  municipio: string;
+  cep: string;
+  ponto_referencia: string;
+  gps_lat: number | null;
+  gps_lng: number | null;
   orgao: string;
+  renda_familiar: string;
+  tipo_moradia: string;
+  material_construcao: string;
+  area_risco: boolean | null;
+  deficiencia: string;
+  doenca_cronica: string;
+  prioridade: string;
 };
 
 export async function buscarPessoasSAD(query: string): Promise<PessoaSAD[]> {
+  const campos = [
+    'id', 'nome', 'cpf', 'rg', 'data_nascimento', 'genero', 'estado_civil',
+    'telefone', 'email', 'endereco', 'bairro', 'municipio', 'cep',
+    'ponto_referencia', 'gps_lat', 'gps_lng', 'orgao',
+    'renda_familiar', 'tipo_moradia', 'material_construcao',
+    'area_risco', 'deficiencia', 'doenca_cronica', 'prioridade',
+  ].join(',');
+
   const params = new URLSearchParams({
-    select: 'id,nome,cpf,telefone,endereco,orgao',
-    or: `(nome.ilike.*${query}*,orgao.ilike.*${query}*)`,
+    select: campos,
+    or: `(nome.ilike.*${query}*,orgao.ilike.*${query}*,cpf.ilike.*${query}*)`,
     limit: '20',
   });
+
   const res = await fetch(`${SAD_URL}/rest/v1/pessoas?${params.toString()}`, {
     headers: {
       Authorization: `Bearer ${SAD_KEY}`,
       apikey: SAD_KEY,
     },
   });
+
   if (!res.ok) {
     const body = await res.text();
     console.error(`[SAD] status=${res.status} body=${body}`);
     throw new Error(`SAD ${res.status}: ${body}`);
   }
+
   return res.json();
 }
 
 // Faz upload de um PDF (uri local) para o Storage do SAD
-// Retorna a URL pública do arquivo ou lança erro
 export async function uploadPdfParaSAD(
   uri: string,
   nomeArquivo: string,
 ): Promise<string> {
-  // Lê o arquivo como blob
   const response = await fetch(uri);
   const blob = await response.blob();
-
   const path = `sentinela/${Date.now()}_${nomeArquivo}`;
 
   const uploadRes = await fetch(
@@ -62,17 +88,15 @@ export async function uploadPdfParaSAD(
     throw new Error(`Upload SAD ${uploadRes.status}: ${body}`);
   }
 
-  // Monta URL pública
-  const publicUrl = `${SAD_URL}/storage/v1/object/public/documentos/${path}`;
-  return publicUrl;
+  return `${SAD_URL}/storage/v1/object/public/documentos/${path}`;
 }
 
 // Registra o PDF enviado na tabela documentos_recebidos do SAD
 export async function registrarDocumentoSAD(params: {
-  nome: string;         // nome exibido no SAD
-  url: string;          // URL pública retornada pelo upload
-  pessoaId?: string;    // id da pessoa no SAD (opcional)
-  descricao?: string;   // ex: "Laudo de Vistoria — protocolo 001"
+  nome: string;
+  url: string;
+  pessoaId?: string;
+  descricao?: string;
 }): Promise<void> {
   const payload: Record<string, any> = {
     nome: params.nome,
@@ -97,5 +121,70 @@ export async function registrarDocumentoSAD(params: {
     const body = await res.text();
     console.error(`[SAD] registro status=${res.status} body=${body}`);
     throw new Error(`Registro SAD ${res.status}: ${body}`);
+  }
+}
+
+// =============================================================
+// ETAPA 3 — Ocorrências georreferenciadas
+// Grava o "gêmeo estruturado" do PDF na tabela ocorrencias do SAD.
+// Alimenta o Mapa de Ocorrências e o Módulo de Situação de Emergência.
+// =============================================================
+
+export type OcorrenciaSAD = {
+  sentinela_id: string;           // id da vistoria no app (chave de idempotência)
+  pessoa_id?: string | null;      // id da pessoa no SAD (bigint, enviado como string)
+  documento_url?: string | null;  // URL do PDF no Storage (preenchido no envio)
+  protocolo?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  endereco?: string | null;
+  bairro?: string | null;
+  municipio_uf?: string | null;
+  ponto_referencia?: string | null;
+  data_vistoria?: string | null;  // 'YYYY-MM-DD'
+  tipificacao?: string | null;
+  tipificacao_outro?: string | null;
+  nivel_risco?: string | null;
+  localizacao?: string | null;
+  tipo_imovel?: string | null;
+  material_construcao?: string | null;
+  propriedade?: string | null;
+  pessoas_afetadas?: number | null;
+  familias_afetadas?: number | null;
+  descricao_situacao?: string | null;
+  recomendacoes?: string | null;
+  tipo_estrutura?: string | null;
+  risco_estrutural?: string | null;
+  obs_risco_estrutural?: string | null;
+  risco_hidrologico?: string | null;
+  orgao_destino?: string | null;
+  situacao_imovel?: string | null;
+  reavaliacao?: boolean | null;
+  vistoriador_nome?: string | null;
+  vistoriador_matricula?: string | null;
+};
+
+// Upsert por sentinela_id: reexportar a mesma vistoria ATUALIZA, não duplica.
+export async function registrarOcorrenciaSAD(o: OcorrenciaSAD): Promise<void> {
+  const payload: Record<string, any> = { origem: 'sentinela_v2', ...o };
+
+  const res = await fetch(
+    `${SAD_URL}/rest/v1/ocorrencias?on_conflict=sentinela_id`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${SAD_KEY}`,
+        apikey: SAD_KEY,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=minimal',
+      },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.error(`[SAD] ocorrencia status=${res.status} body=${body}`);
+    throw new Error(`Ocorrência SAD ${res.status}: ${body}`);
   }
 }
