@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
 import { buscarPessoasSAD, PessoaSAD } from '../../lib/sadApi';
+import { gerarTextoIA } from '../../lib/ia';
 
 const TIPIFICACOES = ['Deslizamento', 'Tempestade', 'Incêndio', 'Alagamento', 'Outros'];
 const NIVEIS_RISCO = ['Baixo', 'Médio', 'Alto', 'Muito Alto'];
@@ -31,6 +32,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 function Input({ value, onChangeText, placeholder, keyboardType, multiline }: any) {
   return <TextInput style={[styles.input, multiline && { height: 100, textAlignVertical: 'top' }]} value={value} onChangeText={onChangeText} placeholder={placeholder} placeholderTextColor={Colors.textSecondary} keyboardType={keyboardType || 'default'} multiline={multiline} />;
+}
+function BtnGerarIA({ loading, onPress }: { loading: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.iaBtn} onPress={onPress} disabled={loading}>
+      <Text style={styles.iaBtnText}>{loading ? '✨ Gerando…' : '✨ Gerar com IA'}</Text>
+    </TouchableOpacity>
+  );
 }
 function BtnGroup({ options, value, onChange, colorMap }: { options: string[]; value: string; onChange: (v: string) => void; colorMap?: Record<string, string> }) {
   return (
@@ -105,6 +113,23 @@ export default function NovaVistoria() {
   const [sadQuery, setSadQuery] = useState('');
   const [sadResultados, setSadResultados] = useState<PessoaSAD[] | null>(null);
   const [buscandoSAD, setBuscandoSAD] = useState(false);
+  const [gerandoIA, setGerandoIA] = useState<string | null>(null);
+
+  async function gerarComIA(campo: 'danos_materiais' | 'descricao_situacao' | 'recomendacoes') {
+    const fatos = String((formRef.current as any)?.[campo] || '').trim();
+    if (!fatos) { Alert.alert('Escreva primeiro', 'Anote os pontos em poucas palavras e toque em Gerar com IA.'); return; }
+    Keyboard.dismiss();
+    setGerandoIA(campo);
+    try {
+      const tipo = campo === 'recomendacoes' ? 'recomendacoes' : campo === 'descricao_situacao' ? 'descricao_tecnica' : 'observacoes';
+      const texto = await gerarTextoIA(fatos, tipo as any, 'geral');
+      if (texto) set(campo, texto);
+    } catch (e) {
+      Alert.alert('Não foi possível gerar', 'Verifique a internet e tente de novo. Seu texto foi mantido.');
+    } finally {
+      setGerandoIA(null);
+    }
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -272,6 +297,10 @@ export default function NovaVistoria() {
       cpf: applyCPF(p.cpf || ''),
       telefone: applyPhone(p.telefone || ''),
       endereco: p.endereco || prev.endereco,
+      bairro: p.bairro || prev.bairro,
+      municipio: p.municipio || prev.municipio,
+      gps_lat: p.gps_lat ?? prev.gps_lat,
+      gps_lng: p.gps_lng ?? prev.gps_lng,
       sad_pessoa_id: p.id,
     }));
     scheduleAutoSave();
@@ -370,9 +399,12 @@ export default function NovaVistoria() {
             <View style={{ flex: 1 }}><Field label="Famílias Afetadas"><Input value={form.familias_afetadas} onChangeText={(v: string) => set('familias_afetadas', v)} keyboardType="numeric" /></Field></View>
           </View>
           <Field label="Danos Materiais"><Input value={form.danos_materiais} onChangeText={(v: string) => set('danos_materiais', v)} placeholder="Descreva os danos materiais observados" multiline /></Field>
+          <BtnGerarIA loading={gerandoIA === 'danos_materiais'} onPress={() => gerarComIA('danos_materiais')} />
           <Field label="Endereço da Ocorrência (se diferente)"><Input value={form.endereco_ocorrencia} onChangeText={(v: string) => set('endereco_ocorrencia', v)} placeholder="Se diferente do endereço do solicitante" /></Field>
           <Field label="Descrição da Situação *"><Input value={form.descricao_situacao} onChangeText={(v: string) => set('descricao_situacao', v)} placeholder="Descreva detalhadamente a situação encontrada" multiline /></Field>
+          <BtnGerarIA loading={gerandoIA === 'descricao_situacao'} onPress={() => gerarComIA('descricao_situacao')} />
           <Field label="Recomendações"><Input value={form.recomendacoes} onChangeText={(v: string) => set('recomendacoes', v)} placeholder="Medidas recomendadas para mitigação" multiline /></Field>
+          <BtnGerarIA loading={gerandoIA === 'recomendacoes'} onPress={() => gerarComIA('recomendacoes')} />
         </View>
 
         <View style={styles.section}>
@@ -518,6 +550,8 @@ const styles = StyleSheet.create({
   sadSemResultados: { color: Colors.textSecondary, fontSize: 13, textAlign: 'center', paddingVertical: 16 },
   sadCancelarBtn: { marginTop: 8, alignItems: 'center', padding: 8 },
   sadCancelarText: { color: Colors.danger, fontSize: 13 },
+  iaBtn: { backgroundColor: Colors.background, borderRadius: 8, paddingVertical: 9, alignItems: 'center', borderWidth: 1, borderColor: Colors.primary, marginTop: -4, marginBottom: 10 },
+  iaBtnText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
   saveBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 16, margin: 12, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   offlineHint: { color: Colors.success, fontSize: 12, textAlign: 'center', marginBottom: 20 },

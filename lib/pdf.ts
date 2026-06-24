@@ -155,7 +155,7 @@ async function printAndShare(html: string, sadMeta: SadMeta): Promise<void> {
 
 export async function exportVistoriaPdf(r: any): Promise<void> {
   const s = await getSettings();
-  const proto = r.protocolo || r.id || '—';
+  const proto = (r.protocolo && String(r.protocolo).trim()) ? r.protocolo : '—';
   let orgaos = '';
   try { orgaos = r.orgao_destino ? JSON.parse(r.orgao_destino).join(', ') : ''; } catch { orgaos = r.orgao_destino || ''; }
   const gps = r.gps_lat ? `${Number(r.gps_lat).toFixed(6)}, ${Number(r.gps_lng).toFixed(6)}` : null;
@@ -242,7 +242,7 @@ export async function exportVistoriaPdf(r: any): Promise<void> {
 
 export async function exportVistoriaTecnicaPdf(r: any): Promise<void> {
   const s = await getSettings();
-  const proto = r.protocolo || r.id || '—';
+  const proto = (r.protocolo && String(r.protocolo).trim()) ? r.protocolo : '—';
   let orgaos = '';
   try { orgaos = r.orgao_destino ? JSON.parse(r.orgao_destino).join(', ') : ''; } catch { orgaos = r.orgao_destino || ''; }
   const gps = r.gps_lat ? `${Number(r.gps_lat).toFixed(6)}, ${Number(r.gps_lng).toFixed(6)}` : null;

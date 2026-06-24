@@ -5,7 +5,7 @@ import { supabase } from './supabase';
 export async function gerarTextoIA(
   fatos: string,
   tipo: 'descricao_tecnica' | 'observacoes' | 'recomendacoes',
-  contexto: 'tecnica' | 'emergencia' = 'tecnica',
+  contexto: 'tecnica' | 'emergencia' | 'geral' = 'geral',
 ): Promise<string> {
   const { data, error } = await supabase.functions.invoke('gerar-texto', {
     body: { fatos, tipo, contexto },
