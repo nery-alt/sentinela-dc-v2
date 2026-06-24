@@ -5,6 +5,7 @@ import * as Location from 'expo-location';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
 import { buscarPessoasSAD, PessoaSAD } from '../../lib/sadApi';
+import { gerarTextoIA } from '../../lib/ia';
 
 const SITUACOES_IMOVEL = ['Interditado', 'Parcial', 'Liberado'];
 const ORGAOS = ['SEMDCEP', 'SEMIO', 'CBMAM', 'SEMMA', 'SEMASC', 'Outros'];
@@ -40,6 +41,13 @@ function SimNao({ value, onChange }: { value: boolean | null; onChange: (v: bool
         <Text style={[styles.simNaoText, value === false && styles.simNaoTextSel]}>Não</Text>
       </TouchableOpacity>
     </View>
+  );
+}
+function BtnGerarIA({ loading, onPress }: { loading: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={styles.iaBtn} onPress={onPress} disabled={loading}>
+      <Text style={styles.iaBtnText}>{loading ? '✨ Gerando…' : '✨ Gerar com IA'}</Text>
+    </TouchableOpacity>
   );
 }
 function Checkbox({ label, checked, onToggle }: { label: string; checked: boolean; onToggle: () => void }) {
@@ -108,6 +116,22 @@ export default function NovaVistoriaTecnica() {
   const [sadQuery, setSadQuery] = useState('');
   const [sadResultados, setSadResultados] = useState<PessoaSAD[] | null>(null);
   const [buscandoSAD, setBuscandoSAD] = useState(false);
+  const [gerandoIA, setGerandoIA] = useState<string | null>(null);
+
+  async function gerarComIA(campo: 'descricao_tecnica' | 'observacoes') {
+    const fatos = String((formRef.current as any)?.[campo] || '').trim();
+    if (!fatos) { Alert.alert('Escreva primeiro', 'Anote os pontos em poucas palavras e toque em Gerar com IA.'); return; }
+    Keyboard.dismiss();
+    setGerandoIA(campo);
+    try {
+      const texto = await gerarTextoIA(fatos, campo, 'tecnica');
+      if (texto) set(campo, texto);
+    } catch (e) {
+      Alert.alert('Não foi possível gerar', 'Verifique a internet e tente de novo. Seu texto foi mantido.');
+    } finally {
+      setGerandoIA(null);
+    }
+  }
 
   useEffect(() => {
     if (!id) return;
@@ -285,6 +309,9 @@ export default function NovaVistoriaTecnica() {
       cpf_responsavel: applyCPF(p.cpf || ''),
       telefone: applyPhone(p.telefone || ''),
       endereco: p.endereco || prev.endereco,
+      bairro: p.bairro || prev.bairro,
+      gps_lat: p.gps_lat ?? prev.gps_lat,
+      gps_lng: p.gps_lng ?? prev.gps_lng,
       sad_pessoa_id: p.id,
     }));
     scheduleAutoSave();
@@ -433,7 +460,9 @@ export default function NovaVistoriaTecnica() {
             <Field label="Necessita adequações antes do alvará?"><SimNao value={form.necessita_adequacoes} onChange={(v) => set('necessita_adequacoes', v)} /></Field>
           )}
           <Field label="Observações"><Input value={form.observacoes} onChangeText={(v: string) => set('observacoes', v)} placeholder="Observações gerais sobre a vistoria" multiline /></Field>
+          <BtnGerarIA loading={gerandoIA === 'observacoes'} onPress={() => gerarComIA('observacoes')} />
           <Field label="Descrição Técnica"><Input value={form.descricao_tecnica} onChangeText={(v: string) => set('descricao_tecnica', v)} placeholder="Descrição técnica detalhada" multiline /></Field>
+          <BtnGerarIA loading={gerandoIA === 'descricao_tecnica'} onPress={() => gerarComIA('descricao_tecnica')} />
           <Field label="Protocolo (opcional)"><Input value={form.protocolo} onChangeText={(v: string) => set('protocolo', v)} placeholder="Ex: VT-2026-001" /></Field>
         </View>
 
@@ -551,6 +580,8 @@ const styles = StyleSheet.create({
   sadCancelarText: { color: Colors.danger, fontSize: 13 },
   resultBanner: { borderWidth: 1.5, borderRadius: 10, padding: 14, alignItems: 'center', marginVertical: 10 },
   resultBannerText: { fontSize: 14, fontWeight: 'bold' },
+  iaBtn: { backgroundColor: Colors.background, borderRadius: 8, paddingVertical: 9, alignItems: 'center', borderWidth: 1, borderColor: Colors.primary, marginTop: -4, marginBottom: 10 },
+  iaBtnText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
   saveBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 16, margin: 12, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   offlineHint: { color: Colors.success, fontSize: 12, textAlign: 'center', marginBottom: 20 },
