@@ -89,6 +89,13 @@ function applyPhone(v: string) {
     .replace(/(\d{5})(\d)/, '$1-$2');
 }
 
+function isoParaBr(v: string): string {
+  if (!v) return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) return v;
+  const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : v;
+}
+
 function calcIdade(dataNasc: string): number | null {
   const parts = dataNasc.split('/');
   if (parts.length !== 3) return null;
@@ -222,8 +229,28 @@ export default function NovoCadastro() {
       ...prev,
       nome: pessoa.nome || prev.nome,
       cpf: pessoa.cpf || prev.cpf,
-      telefone: pessoa.telefone || prev.telefone,
+      rg: pessoa.rg || prev.rg,
+      data_nascimento: isoParaBr(pessoa.data_nascimento) || prev.data_nascimento,
+      genero: pessoa.genero || prev.genero,
+      estado_civil: pessoa.estado_civil || prev.estado_civil,
+      telefone: applyPhone(pessoa.telefone || '') || prev.telefone,
+      email: pessoa.email || prev.email,
       endereco: pessoa.endereco || prev.endereco,
+      bairro: pessoa.bairro || prev.bairro,
+      municipio: pessoa.municipio || prev.municipio,
+      cep: pessoa.cep || prev.cep,
+      ponto_referencia: pessoa.ponto_referencia || prev.ponto_referencia,
+      gps_lat: pessoa.gps_lat ?? prev.gps_lat,
+      gps_lng: pessoa.gps_lng ?? prev.gps_lng,
+      renda_familiar: pessoa.renda_familiar || prev.renda_familiar,
+      tipo_moradia: pessoa.tipo_moradia || prev.tipo_moradia,
+      material_construcao: pessoa.material_construcao || prev.material_construcao,
+      area_risco: pessoa.area_risco ?? prev.area_risco,
+      deficiencia: pessoa.deficiencia ? true : prev.deficiencia,
+      qual_deficiencia: pessoa.deficiencia || prev.qual_deficiencia,
+      doenca_cronica: pessoa.doenca_cronica ? true : prev.doenca_cronica,
+      qual_doenca_cronica: pessoa.doenca_cronica || prev.qual_doenca_cronica,
+      prioridade: pessoa.prioridade || prev.prioridade,
       sad_pessoa_id: pessoa.id,
     }));
     setSadVisible(false);

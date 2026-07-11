@@ -4,7 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
-import { buscarPessoasSAD, PessoaSAD } from '../../lib/sadApi';
+import { buscarAlvarasSAD, AlvaraBuscaSAD } from '../../lib/sadApi';
 import { gerarTextoIA } from '../../lib/ia';
 
 const SITUACOES_IMOVEL = ['Interditado', 'Parcial', 'Liberado'];
@@ -114,7 +114,7 @@ export default function NovaVistoriaTecnica() {
   formRef.current = form;
   const [sadVisible, setSadVisible] = useState(false);
   const [sadQuery, setSadQuery] = useState('');
-  const [sadResultados, setSadResultados] = useState<PessoaSAD[] | null>(null);
+  const [sadResultados, setSadResultados] = useState<AlvaraBuscaSAD[] | null>(null);
   const [buscandoSAD, setBuscandoSAD] = useState(false);
   const [gerandoIA, setGerandoIA] = useState<string | null>(null);
 
@@ -295,24 +295,25 @@ export default function NovaVistoriaTecnica() {
     if (!sadQuery.trim()) return;
     setBuscandoSAD(true);
     try {
-      const res = await buscarPessoasSAD(sadQuery.trim());
+      const res = await buscarAlvarasSAD(sadQuery.trim());
       setSadResultados(res);
     } catch { Alert.alert('Erro', 'Não foi possível conectar ao SAD.'); }
     finally { setBuscandoSAD(false); }
   }
-  function selecionarSAD(p: PessoaSAD) {
+  function selecionarSAD(a: AlvaraBuscaSAD) {
     setForm(prev => ({
       ...prev,
-      nome_estabelecimento: p.nome || prev.nome_estabelecimento,
-      cnpj: p.cpf || prev.cnpj,
-      nome_responsavel: p.nome || prev.nome_responsavel,
-      cpf_responsavel: applyCPF(p.cpf || ''),
-      telefone: applyPhone(p.telefone || ''),
-      endereco: p.endereco || prev.endereco,
-      bairro: p.bairro || prev.bairro,
-      gps_lat: p.gps_lat ?? prev.gps_lat,
-      gps_lng: p.gps_lng ?? prev.gps_lng,
-      sad_pessoa_id: p.id,
+      nome_estabelecimento: a.nome_estabelecimento || prev.nome_estabelecimento,
+      cnpj: a.cnpj || prev.cnpj,
+      nome_responsavel: a.nome_responsavel || prev.nome_responsavel,
+      cpf_responsavel: applyCPF(a.cpf_responsavel || ''),
+      telefone: applyPhone(a.telefone || ''),
+      endereco: a.endereco || prev.endereco,
+      bairro: a.bairro || prev.bairro,
+      gps_lat: a.gps_lat ?? prev.gps_lat,
+      gps_lng: a.gps_lng ?? prev.gps_lng,
+      protocolo: a.numero || prev.protocolo,
+      sad_pessoa_id: String(a.id),
     }));
     scheduleAutoSave();
     fecharSAD();
@@ -504,7 +505,7 @@ export default function NovaVistoriaTecnica() {
               style={styles.sadDialogInput}
               value={sadQuery}
               onChangeText={setSadQuery}
-              placeholder="Digite o nome ou órgão"
+              placeholder="Digite o nome do estabelecimento"
               placeholderTextColor={Colors.textSecondary}
               autoFocus
               returnKeyType="search"
@@ -517,10 +518,10 @@ export default function NovaVistoriaTecnica() {
               {sadResultados !== null && sadResultados.length === 0 && (
                 <Text style={styles.sadSemResultados}>Nenhum resultado encontrado.</Text>
               )}
-              {(sadResultados ?? []).map(p => (
-                <TouchableOpacity key={p.id} style={styles.sadResultItem} onPress={() => selecionarSAD(p)}>
-                  <Text style={styles.sadResultNome}>{p.nome}</Text>
-                  <Text style={styles.sadResultSub}>{p.cpf}{p.orgao ? ` · ${p.orgao}` : ''}</Text>
+              {(sadResultados ?? []).map(a => (
+                <TouchableOpacity key={a.id} style={styles.sadResultItem} onPress={() => selecionarSAD(a)}>
+                  <Text style={styles.sadResultNome}>{a.nome_estabelecimento}</Text>
+                  <Text style={styles.sadResultSub}>{a.numero || 'sem nº'}{a.nome_responsavel ? ` · ${a.nome_responsavel}` : ''}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>

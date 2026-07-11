@@ -13,9 +13,8 @@ async function readLocalSession(): Promise<Session | null> {
     const raw = await AsyncStorage.getItem(key);
     if (!raw) return null;
     const data = JSON.parse(raw) as Session;
-    if (!data?.access_token || !data?.expires_at) return null;
-    const nowSec = Math.floor(Date.now() / 1000);
-    if (data.expires_at <= nowSec) return null;
+    // Accept expired access_token — refresh_token is what matters for re-auth
+    if (!data?.access_token || !data?.refresh_token) return null;
     return data;
   } catch {
     return null;
@@ -35,13 +34,15 @@ export function useAuth() {
       const localSession = await readLocalSession();
 
       if (localSession) {
-        // Valid non-expired session in storage — navigate immediately, no network call needed
+        // Use local session immediately — WatermelonDB works offline regardless of token expiry
         if (!cancelled) {
           setSession(localSession);
           setLoading(false);
+          // Guard against SIGNED_OUT fired by a failed refresh while offline
+          isOfflineModeRef.current = true;
         }
-        // Sync online state in background without blocking
-        supabase.auth.getSession()
+        // Refresh token in background; if online this gives a fresh access_token
+        supabase.auth.refreshSession()
           .then(({ data }) => {
             if (!cancelled && data.session) {
               isOfflineModeRef.current = false;
