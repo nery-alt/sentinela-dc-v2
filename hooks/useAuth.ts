@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Session } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,7 +25,6 @@ export function useAuth() {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [offlineNoSession, setOfflineNoSession] = useState(false);
-  const isOfflineModeRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -38,16 +37,11 @@ export function useAuth() {
         if (!cancelled) {
           setSession(localSession);
           setLoading(false);
-          // Guard against SIGNED_OUT fired by a failed refresh while offline
-          isOfflineModeRef.current = true;
         }
         // Refresh token in background; if online this gives a fresh access_token
         supabase.auth.refreshSession()
           .then(({ data }) => {
-            if (!cancelled && data.session) {
-              isOfflineModeRef.current = false;
-              setSession(data.session);
-            }
+            if (!cancelled && data.session) setSession(data.session);
           })
           .catch(() => {});
         return;
@@ -66,7 +60,6 @@ export function useAuth() {
       if (cancelled) return;
 
       if (result.kind === 'timeout') {
-        isOfflineModeRef.current = true;
         setOfflineNoSession(true);
         setLoading(false);
       } else {
@@ -79,13 +72,23 @@ export function useAuth() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (cancelled) return;
-      // Ignore SIGNED_OUT fired by failed token refresh while offline
-      if (event === 'SIGNED_OUT' && isOfflineModeRef.current) return;
-      setSession(newSession);
-      if (newSession) {
-        isOfflineModeRef.current = false;
-        setOfflineNoSession(false);
+      if (event === 'SIGNED_OUT') {
+        // A failed background token refresh with no connection also fires
+        // SIGNED_OUT — including from the Supabase client's own internal
+        // auto-refresh, which starts the instant the client is created,
+        // ahead of this effect. So don't trust the event alone: check disk
+        // directly. An explicit "Sair" in Configurações clears the stored
+        // token before this event fires, so if a token is still there, this
+        // SIGNED_OUT was just a doomed offline refresh, not a real one.
+        readLocalSession().then(stillThere => {
+          if (cancelled) return;
+          if (stillThere) return;
+          setSession(null);
+        });
+        return;
       }
+      setSession(newSession);
+      if (newSession) setOfflineNoSession(false);
     });
 
     return () => {

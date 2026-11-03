@@ -139,7 +139,7 @@ export default function NovaVistoriaTecnica() {
       try {
         const col = database.collections.get('vistorias_tecnicas');
         const registro = await col.find(id as string);
-        const raw = registro._raw;
+        const raw = registro._raw as Record<string, any>;
         const b = (v: any) => v === 1 || v === true ? true : v === 0 || v === false ? false : null;
         setForm({
           nome_estabelecimento: raw.nome_estabelecimento || '',
@@ -283,12 +283,23 @@ export default function NovaVistoriaTecnica() {
     } catch (e) { console.error('Erro ao salvar:', e); Alert.alert('Erro', 'Não foi possível salvar.'); }
   }
   async function capturaGPS() {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permissão negada', 'Habilite a localização.'); return; }
-    const loc = await Location.getCurrentPositionAsync({});
-    set('gps_lat', loc.coords.latitude);
-    set('gps_lng', loc.coords.longitude);
-    Alert.alert('GPS capturado', `Lat: ${loc.coords.latitude.toFixed(6)}\nLng: ${loc.coords.longitude.toFixed(6)}`);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permissão negada', 'Habilite a localização.'); return; }
+      const loc = await Promise.race([
+        Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000)),
+      ]);
+      set('gps_lat', loc.coords.latitude);
+      set('gps_lng', loc.coords.longitude);
+      Alert.alert('GPS capturado', `Lat: ${loc.coords.latitude.toFixed(6)}\nLng: ${loc.coords.longitude.toFixed(6)}`);
+    } catch (e: any) {
+      console.error('[GPS] erro ao capturar localização:', e);
+      const msg = e?.message === 'timeout'
+        ? 'O GPS demorou demais para responder. Tente em um local aberto, longe de cobertura densa.'
+        : 'Verifique se a localização está ativada no aparelho e tente novamente.';
+      Alert.alert('Não foi possível obter o GPS', msg);
+    }
   }
   function fecharSAD() { setSadVisible(false); setSadQuery(''); setSadResultados(null); }
   async function buscarNoSAD() {
