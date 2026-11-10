@@ -260,6 +260,7 @@ export async function exportVistoriaTecnicaPdf(r: any): Promise<void> {
       row('Endereço', r.endereco), row('Bairro', r.bairro), row('GPS', gps),
       row('Tipo de Estabelecimento', r.tipo_estabelecimento),
       row('Área Total (m²)', r.area_total), row('Capacidade de Pessoas', r.capacidade_pessoas),
+      row('Grau de risco', r.classificacao_risco), row('Porte', r.classificacao_porte),
     ].join('')),
     section('Extintores', [
       row('Possui extintor', r.possui_extintor), row('Quantidade', r.qtd_extintores),
@@ -282,6 +283,11 @@ export async function exportVistoriaTecnicaPdf(r: any): Promise<void> {
     section('Documentação Técnica', [
       row('Planta baixa / Croqui', r.planta_baixa),
       row('Sistema fixo de combate a incêndio', r.sistema_fixo_incendio),
+    ].join('')),
+    section('Segurança e Estabilidade Estrutural', [
+      row('Estado de conservação', r.estrutura_conservacao), row('Trincas/fissuras', r.estrutura_trincas),
+      row('Infiltração/umidade', r.estrutura_infiltracao), row('Cobertura em boas condições', r.estrutura_cobertura_ok),
+      row('Observação estrutural', r.estrutura_obs),
     ].join('')),
     section('Resultado', [
       row('Observações', r.observacoes),

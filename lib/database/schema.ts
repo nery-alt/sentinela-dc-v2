@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export const schema = appSchema({
-  version: 3,
+  version: 4,
   tables: [
     tableSchema({
       name: 'cadastros',
@@ -166,6 +166,15 @@ export const schema = appSchema({
         { name: 'obs_hidrante', type: 'string', isOptional: true },
         { name: 'obs_iluminacao', type: 'string', isOptional: true },
         { name: 'obs_planta_baixa', type: 'string', isOptional: true },
+        { name: 'classificacao_risco', type: 'string', isOptional: true },
+        { name: 'classificacao_porte', type: 'string', isOptional: true },
+        { name: 'estrutura_conservacao', type: 'string', isOptional: true },
+        { name: 'estrutura_trincas', type: 'string', isOptional: true },
+        { name: 'estrutura_infiltracao', type: 'boolean', isOptional: true },
+        { name: 'estrutura_cobertura_ok', type: 'boolean', isOptional: true },
+        { name: 'estrutura_obs', type: 'string', isOptional: true },
+        { name: 'sad_alvara_id', type: 'string', isOptional: true },
+        { name: 'enviado_sad_em', type: 'number', isOptional: true },
         { name: 'rascunho', type: 'boolean' },
         { name: 'sincronizado', type: 'boolean' },
         { name: 'created_at', type: 'number' },

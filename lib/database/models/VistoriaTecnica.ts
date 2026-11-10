@@ -49,6 +49,15 @@ export class VistoriaTecnica extends Model {
   @field('reavaliacao') reavaliacao!: boolean;
   @text('nome_vistoriador') nomeVistoriador!: string;
   @text('matricula') matricula!: string;
+  @text('classificacao_risco') classificacaoRisco!: string;
+  @text('classificacao_porte') classificacaoPorte!: string;
+  @text('estrutura_conservacao') estruturaConservacao!: string;
+  @text('estrutura_trincas') estruturaTrincas!: string;
+  @field('estrutura_infiltracao') estruturaInfiltracao!: boolean;
+  @field('estrutura_cobertura_ok') estruturaCoberturaOk!: boolean;
+  @text('estrutura_obs') estruturaObs!: string;
+  @text('sad_alvara_id') sadAlvaraId!: string;
+  @field('enviado_sad_em') enviadoSadEm!: number;
   @field('rascunho') rascunho!: boolean;
   @field('sincronizado') sincronizado!: boolean;
   @readonly @date('created_at') createdAt!: Date;

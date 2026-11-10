@@ -45,13 +45,19 @@ export type AlvaraBuscaSAD = {
   municipio: string | null;
   gps_lat: number | null;
   gps_lng: number | null;
+  tipo_estabelecimento?: string | null;
+  area_total?: number | null;
+  capacidade_pessoas?: number | null;
+  classificacao_porte?: string | null;
+  classificacao_risco?: string | null;
 };
 
 export async function buscarAlvarasSAD(query: string): Promise<AlvaraBuscaSAD[]> {
   const campos = [
     'id', 'numero', 'nome_estabelecimento', 'cnpj', 'nome_responsavel',
     'cpf_responsavel', 'telefone', 'endereco', 'bairro', 'municipio',
-    'gps_lat', 'gps_lng',
+    'gps_lat', 'gps_lng', 'tipo_estabelecimento', 'area_total', 'capacidade_pessoas',
+    'classificacao_porte', 'classificacao_risco',
   ].join(',');
 
   const params = new URLSearchParams({
@@ -204,4 +210,39 @@ export async function registrarAlvaraSAD(a: AlvaraSAD): Promise<void> {
     body: JSON.stringify(payload),
   });
   if (!res.ok) { const body = await res.text(); throw new Error(`Alvará SAD ${res.status}: ${body}`); }
+}
+// =============================================================
+// Alvará: envio da vistoria em campo para o SAD
+// Usa a "porta de entrada" receber-alvara do SAD, que só atualiza
+// um alvará que já existe (pelo número AL) e só os campos da vistoria.
+// =============================================================
+export type FotoAlvara = { uri: string; legenda: string };
+
+export async function uploadFotoAlvaraSAD(uri: string, numero: string, ordem: number): Promise<string> {
+  const resp = await fetch(uri);
+  const blob = await resp.blob();
+  const num = numero.replace(/[^A-Za-z0-9]+/g, '-');
+  const path = `sentinela/alvaras/${num}_${ordem}_${Date.now()}.jpg`;
+  const up = await fetch(`${SAD_URL}/storage/v1/object/documentos/${path}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
+    body: blob,
+  });
+  if (!up.ok) { const body = await up.text(); throw new Error(`Foto ${ordem}: ${up.status} ${body}`); }
+  return `${SAD_URL}/storage/v1/object/public/documentos/${path}`;
+}
+
+export async function enviarAlvaraSAD(params: {
+  numero: string;
+  campos: Record<string, unknown>;
+  fotos: { ordem: number; url: string; legenda: string }[];
+}): Promise<{ campos: number; fotos: number }> {
+  const res = await fetch(`${SAD_URL}/functions/v1/receber-alvara`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const dados = await res.json().catch(() => ({}));
+  if (!res.ok || !dados.ok) throw new Error(dados.error || `SAD respondeu ${res.status}`);
+  return { campos: dados.campos ?? 0, fotos: dados.fotos ?? 0 };
 }

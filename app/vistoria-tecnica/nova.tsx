@@ -1,15 +1,20 @@
 import { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Keyboard, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, BackHandler, Keyboard, Modal, Image } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
-import { buscarAlvarasSAD, AlvaraBuscaSAD } from '../../lib/sadApi';
+import { buscarAlvarasSAD, AlvaraBuscaSAD, FotoAlvara } from '../../lib/sadApi';
+import { escolherFotoAlvara, lerFotos, MAX_FOTOS_ALVARA } from '../../lib/fotosAlvara';
 import { gerarTextoIA } from '../../lib/ia';
 
 const SITUACOES_IMOVEL = ['Interditado', 'Parcial', 'Liberado'];
 const ORGAOS = ['SEMDCEP', 'SEMIO', 'CBMAM', 'SEMMA', 'SEMASC', 'Outros'];
 const TIPOS_EXTINTOR = ['Pó ABC', 'CO2', 'Água', 'Espuma', 'Outro'];
+const RISCOS = ['Baixo', 'Médio', 'Alto'];
+const PORTES = ['Pequeno', 'Médio', 'Grande'];
+const CONSERVACAO = ['Bom', 'Regular', 'Ruim'];
+const TRINCAS = ['Não', 'Leves', 'Graves'];
 
 function SectionTitle({ title }: { title: string }) {
   return <Text style={styles.sectionTitle}>{title}</Text>;
@@ -102,6 +107,11 @@ const FORM_INICIAL = {
   qual_extintor_outro: '', qual_orgao_outro: '', qual_sistema_fixo: '',
   obs_hidrante: '', obs_iluminacao: '', obs_planta_baixa: '',
   sad_pessoa_id: '',
+  classificacao_risco: '', classificacao_porte: '',
+  estrutura_conservacao: '', estrutura_trincas: '',
+  estrutura_infiltracao: null as boolean | null, estrutura_cobertura_ok: null as boolean | null,
+  estrutura_obs: '', sad_alvara_id: '',
+  fotos: [] as FotoAlvara[],
 };
 
 export default function NovaVistoriaTecnica() {
@@ -173,6 +183,15 @@ export default function NovaVistoriaTecnica() {
           obs_iluminacao: raw.obs_iluminacao || '',
           obs_planta_baixa: raw.obs_planta_baixa || '',
           sad_pessoa_id: raw.sad_pessoa_id || '',
+          classificacao_risco: raw.classificacao_risco || '',
+          classificacao_porte: raw.classificacao_porte || '',
+          estrutura_conservacao: raw.estrutura_conservacao || '',
+          estrutura_trincas: raw.estrutura_trincas || '',
+          estrutura_infiltracao: b(raw.estrutura_infiltracao),
+          estrutura_cobertura_ok: b(raw.estrutura_cobertura_ok),
+          estrutura_obs: raw.estrutura_obs || '',
+          sad_alvara_id: raw.sad_alvara_id || '',
+          fotos: lerFotos(raw.fotos),
         });
         rascunhoId.current = id as string;
       } catch (e) {
@@ -206,7 +225,7 @@ export default function NovaVistoriaTecnica() {
     try {
       await database.write(async () => {
         const col = database.collections.get('vistorias_tecnicas');
-        const data = { ...f, orgao_destino: JSON.stringify(f.orgao_destino), area_total: parseFloat(f.area_total) || 0, capacidade_pessoas: parseInt(f.capacidade_pessoas) || 0, qtd_extintores: parseInt(f.qtd_extintores) || 0, qtd_saidas: parseInt(f.qtd_saidas) || 0, rascunho: true, sincronizado: false, updated_at: Date.now() };
+        const data = { ...f, fotos: JSON.stringify(f.fotos || []), orgao_destino: JSON.stringify(f.orgao_destino), area_total: parseFloat(f.area_total) || 0, capacidade_pessoas: parseInt(f.capacidade_pessoas) || 0, qtd_extintores: parseInt(f.qtd_extintores) || 0, qtd_saidas: parseInt(f.qtd_saidas) || 0, rascunho: true, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
           await rec.update((r: any) => { Object.assign(r._raw, data); });
@@ -223,7 +242,7 @@ export default function NovaVistoriaTecnica() {
     try {
       await database.write(async () => {
         const col = database.collections.get('vistorias_tecnicas');
-        const data = { ...form, orgao_destino: JSON.stringify(form.orgao_destino), area_total: parseFloat(form.area_total) || 0, capacidade_pessoas: parseInt(form.capacidade_pessoas) || 0, qtd_extintores: parseInt(form.qtd_extintores) || 0, qtd_saidas: parseInt(form.qtd_saidas) || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
+        const data = { ...form, fotos: JSON.stringify(form.fotos || []), orgao_destino: JSON.stringify(form.orgao_destino), area_total: parseFloat(form.area_total) || 0, capacidade_pessoas: parseInt(form.capacidade_pessoas) || 0, qtd_extintores: parseInt(form.qtd_extintores) || 0, qtd_saidas: parseInt(form.qtd_saidas) || 0, rascunho: false, sincronizado: false, updated_at: Date.now() };
         if (rascunhoId.current) {
           const rec = await col.find(rascunhoId.current);
           await rec.update((r: any) => {
@@ -272,6 +291,17 @@ export default function NovaVistoriaTecnica() {
             r.nomeVistoriador = form.nome_vistoriador;
             r.matricula = form.matricula;
             r.sad_pessoa_id = form.sad_pessoa_id;
+            Object.assign(r._raw, {
+              classificacao_risco: form.classificacao_risco || null,
+              classificacao_porte: form.classificacao_porte || null,
+              estrutura_conservacao: form.estrutura_conservacao || null,
+              estrutura_trincas: form.estrutura_trincas || null,
+              estrutura_infiltracao: form.estrutura_infiltracao,
+              estrutura_cobertura_ok: form.estrutura_cobertura_ok,
+              estrutura_obs: form.estrutura_obs || null,
+              sad_alvara_id: form.sad_alvara_id || null,
+              fotos: JSON.stringify(form.fotos || []),
+            });
             r.rascunho = false;
             r.sincronizado = false;
           });
@@ -301,6 +331,24 @@ export default function NovaVistoriaTecnica() {
       Alert.alert('Não foi possível obter o GPS', msg);
     }
   }
+  async function adicionarFoto(origem: 'camera' | 'galeria') {
+    if ((formRef.current?.fotos || []).length >= MAX_FOTOS_ALVARA) { Alert.alert('Limite', `O laudo leva no máximo ${MAX_FOTOS_ALVARA} fotos.`); return; }
+    try {
+      const foto = await escolherFotoAlvara(origem);
+      if (foto) set('fotos', [...(formRef.current?.fotos || []), foto].slice(0, MAX_FOTOS_ALVARA));
+    } catch (e: any) {
+      Alert.alert('Foto', e?.message || 'Não foi possível obter a foto.');
+    }
+  }
+  function legendaFoto(i: number, legenda: string) {
+    set('fotos', (formRef.current?.fotos || []).map((f: FotoAlvara, k: number) => (k === i ? { ...f, legenda } : f)));
+  }
+  function removerFoto(i: number) {
+    Alert.alert('Remover foto', `Remover a foto ${i + 1}?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Remover', style: 'destructive', onPress: () => set('fotos', (formRef.current?.fotos || []).filter((_: FotoAlvara, k: number) => k !== i)) },
+    ]);
+  }
   function fecharSAD() { setSadVisible(false); setSadQuery(''); setSadResultados(null); }
   async function buscarNoSAD() {
     if (!sadQuery.trim()) return;
@@ -325,6 +373,12 @@ export default function NovaVistoriaTecnica() {
       gps_lng: a.gps_lng ?? prev.gps_lng,
       protocolo: a.numero || prev.protocolo,
       sad_pessoa_id: String(a.id),
+      sad_alvara_id: String(a.id),
+      tipo_estabelecimento: a.tipo_estabelecimento || prev.tipo_estabelecimento,
+      area_total: a.area_total ? String(a.area_total) : prev.area_total,
+      capacidade_pessoas: a.capacidade_pessoas ? String(a.capacidade_pessoas) : prev.capacidade_pessoas,
+      classificacao_porte: a.classificacao_porte || prev.classificacao_porte,
+      classificacao_risco: a.classificacao_risco || prev.classificacao_risco,
     }));
     scheduleAutoSave();
     fecharSAD();
@@ -362,7 +416,7 @@ export default function NovaVistoriaTecnica() {
         <View style={styles.section}>
           <SectionTitle title="🏢 Dados do Estabelecimento" />
           <TouchableOpacity style={styles.sadBtn} onPress={() => setSadVisible(true)}>
-            <Text style={styles.sadBtnText}>🔍 Buscar no SAD{form.sad_pessoa_id ? ' ✓ Vinculado' : ''}</Text>
+            <Text style={styles.sadBtnText}>🔍 Buscar no SAD{form.sad_alvara_id || form.sad_pessoa_id ? ` ✓ Vinculado ${form.protocolo || ''}` : ''}</Text>
           </TouchableOpacity>
           <Field label="Nome do Estabelecimento *"><Input value={form.nome_estabelecimento} onChangeText={(v: string) => set('nome_estabelecimento', v)} placeholder="Razão social ou nome fantasia" /></Field>
           <Field label="CNPJ"><Input value={form.cnpj} onChangeText={(v: string) => set('cnpj', applyCNPJ(v))} placeholder="00.000.000/0000-00" keyboardType="numeric" /></Field>
@@ -383,6 +437,12 @@ export default function NovaVistoriaTecnica() {
             <View style={{ flex: 1 }}><Field label="Área Total (m²)"><Input value={form.area_total} onChangeText={(v: string) => set('area_total', v)} placeholder="Ex: 120" keyboardType="numeric" /></Field></View>
             <View style={{ flex: 1 }}><Field label="Capacidade de Pessoas"><Input value={form.capacidade_pessoas} onChangeText={(v: string) => set('capacidade_pessoas', v)} placeholder="Ex: 50" keyboardType="numeric" /></Field></View>
           </View>
+        </View>
+
+        <View style={styles.section}>
+          <SectionTitle title="📊 Classificação" />
+          <Field label="Grau de risco de incêndio"><BtnGroup options={RISCOS} value={form.classificacao_risco} onChange={(v) => set('classificacao_risco', v)} /></Field>
+          <Field label="Porte do estabelecimento"><BtnGroup options={PORTES} value={form.classificacao_porte} onChange={(v) => set('classificacao_porte', v)} /></Field>
         </View>
 
         <View style={styles.section}>
@@ -459,6 +519,35 @@ export default function NovaVistoriaTecnica() {
         </View>
 
         <View style={styles.section}>
+          <SectionTitle title="🏗️ Segurança e Estabilidade Estrutural" />
+          <Field label="Estado de conservação"><BtnGroup options={CONSERVACAO} value={form.estrutura_conservacao} onChange={(v) => set('estrutura_conservacao', v)} /></Field>
+          <Field label="Trincas, fissuras ou rachaduras?"><BtnGroup options={TRINCAS} value={form.estrutura_trincas} onChange={(v) => set('estrutura_trincas', v)} /></Field>
+          <Field label="Infiltração ou umidade?"><SimNao value={form.estrutura_infiltracao} onChange={(v) => set('estrutura_infiltracao', v)} /></Field>
+          <Field label="Cobertura/telhado em boas condições?"><SimNao value={form.estrutura_cobertura_ok} onChange={(v) => set('estrutura_cobertura_ok', v)} /></Field>
+          <Field label="Observação estrutural"><Input value={form.estrutura_obs} onChangeText={(v: string) => set('estrutura_obs', v)} placeholder="Ex: fissura na parede lateral da cozinha" multiline /></Field>
+        </View>
+
+        <View style={styles.section}>
+          <SectionTitle title={`📷 Fotos do laudo (${form.fotos.length}/${MAX_FOTOS_ALVARA})`} />
+          {form.fotos.map((f: FotoAlvara, i: number) => (
+            <View key={f.uri} style={styles.fotoItem}>
+              <Image source={{ uri: f.uri }} style={styles.fotoImg} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>Fig.{i + 1} — legenda</Text>
+                <Input value={f.legenda} onChangeText={(v: string) => legendaFoto(i, v)} placeholder="Ex: Salão de atendimento" />
+                <TouchableOpacity onPress={() => removerFoto(i)}><Text style={styles.fotoRemover}>Remover</Text></TouchableOpacity>
+              </View>
+            </View>
+          ))}
+          {form.fotos.length < MAX_FOTOS_ALVARA && (
+            <View style={styles.row}>
+              <TouchableOpacity style={[styles.gpsBtn, { flex: 1 }]} onPress={() => adicionarFoto('camera')}><Text style={styles.gpsBtnText}>📸 Câmera</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.gpsBtn, { flex: 1 }]} onPress={() => adicionarFoto('galeria')}><Text style={styles.gpsBtnText}>🖼️ Galeria</Text></TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.section}>
           <SectionTitle title="📋 Resultado da Vistoria" />
           <Field label="Estabelecimento adequado para emissão de alvará?">
             <SimNao value={form.apto_alvara} onChange={(v) => set('apto_alvara', v)} />
@@ -471,7 +560,7 @@ export default function NovaVistoriaTecnica() {
           {form.apto_alvara === false && (
             <Field label="Necessita adequações antes do alvará?"><SimNao value={form.necessita_adequacoes} onChange={(v) => set('necessita_adequacoes', v)} /></Field>
           )}
-          <Field label="Observações"><Input value={form.observacoes} onChangeText={(v: string) => set('observacoes', v)} placeholder="Observações gerais sobre a vistoria" multiline /></Field>
+          <Field label="Anotações da equipe (vão para o laudo no SAD) — toque no 🎤 do teclado para ditar"><Input value={form.observacoes} onChangeText={(v: string) => set('observacoes', v)} placeholder="Ex: extintor atrás da porta da cozinha; fiação nova" multiline /></Field>
           <BtnGerarIA loading={gerandoIA === 'observacoes'} onPress={() => gerarComIA('observacoes')} />
           <Field label="Descrição Técnica"><Input value={form.descricao_tecnica} onChangeText={(v: string) => set('descricao_tecnica', v)} placeholder="Descrição técnica detalhada" multiline /></Field>
           <BtnGerarIA loading={gerandoIA === 'descricao_tecnica'} onPress={() => gerarComIA('descricao_tecnica')} />
@@ -594,6 +683,9 @@ const styles = StyleSheet.create({
   resultBannerText: { fontSize: 14, fontWeight: 'bold' },
   iaBtn: { backgroundColor: Colors.background, borderRadius: 8, paddingVertical: 9, alignItems: 'center', borderWidth: 1, borderColor: Colors.primary, marginTop: -4, marginBottom: 10 },
   iaBtnText: { color: Colors.primary, fontSize: 13, fontWeight: '600' },
+  fotoItem: { flexDirection: 'row', gap: 10, marginBottom: 12, alignItems: 'flex-start' },
+  fotoImg: { width: 90, height: 100, borderRadius: 8, backgroundColor: Colors.background },
+  fotoRemover: { color: Colors.danger, fontSize: 12, marginTop: 4 },
   saveBtn: { backgroundColor: Colors.primary, borderRadius: 12, padding: 16, margin: 12, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   offlineHint: { color: Colors.success, fontSize: 12, textAlign: 'center', marginBottom: 20 },
