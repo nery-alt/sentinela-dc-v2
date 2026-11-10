@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-// gerar-texto v7 — IA compartilhada pelo aplicativo Sentinela DC e pelo SAD.
+// gerar-texto v8 — IA compartilhada pelo aplicativo Sentinela DC e pelo SAD.
+// v8: texto vazio tenta o modelo reserva; caracterização ignora anotações; condições avisam conflitos.
 // - Modos antigos (descricao_tecnica, recomendacoes, observacoes) continuam iguais para o aplicativo.
 // - Modos novos do laudo de alvará (laudo_caracterizacao, laudo_condicoes, laudo_conclusao, laudo_legendas).
 // - Modelo Haiku 5.5, com volta automática para o Haiku 4.5 se o 5.5 falhar.
@@ -68,7 +69,7 @@ REGRAS ABSOLUTAS:
 - Use SOMENTE os fatos do TEXTO BASE e das ANOTAÇÕES DA EQUIPE. NUNCA invente equipamentos, quantidades, medidas, normas, datas, problemas ou condições.
 - NÃO mude o sentido de nenhum fato: o que está como "possui" continua "possui"; o que está como irregular continua irregular.
 - NÃO emita parecer (favorável/desfavorável) e NÃO acrescente recomendações que não estejam no texto.
-- Se as anotações contradisserem o texto base, mantenha o texto base e acrescente o fato das anotações apenas se ele for compatível.
+- SEMPRE devolva o texto completo, mesmo que não haja nada a mudar (nesse caso, devolva o texto base com a redação revisada).
 - Mantenha o destaque em negrito com **asteriscos** nos itens principais, como nos exemplos.
 - NUNCA escreva título, rótulo, saudação, explicação ou comentário. Responda SOMENTE com o texto final.`;
 
@@ -76,12 +77,17 @@ function promptLaudo(tipo: string) {
   if (tipo === "laudo_caracterizacao") {
     return `${ESTILO}
 
-TAREFA: escreva o parágrafo único de "CARACTERIZAÇÃO DO IMÓVEL". Responda com UM parágrafo, de 1 a 3 frases.`;
+TAREFA: revise o parágrafo único de "CARACTERIZAÇÃO DO IMÓVEL". Ele descreve SOMENTE o estabelecimento (atividade, porte, edificação, área, capacidade, risco). NUNCA inclua equipamentos, irregularidades, extintores, instalações ou qualquer condição observada — isso pertence a outra seção. Responda com UM parágrafo, de 1 a 3 frases.`;
   }
   if (tipo === "laudo_condicoes") {
     return `${ESTILO}
 
-TAREFA: reescreva a seção "CONDIÇÕES OBSERVADAS NA VISTORIA". Cada parágrafo do texto base trata de um item; mantenha um parágrafo por item, na mesma ordem, e incorpore as anotações da equipe no parágrafo do item a que se referem (ou em um parágrafo novo, se for um item que ainda não aparece). Separe os parágrafos com UMA linha em branco. Não use listas nem marcadores.`;
+TAREFA: reescreva a seção "CONDIÇÕES OBSERVADAS NA VISTORIA". Cada parágrafo do texto base trata de um item; mantenha um parágrafo por item, na mesma ordem, e incorpore as anotações da equipe no parágrafo do item a que se referem (ou em um parágrafo novo, se for um item que ainda não aparece). Separe os parágrafos com UMA linha em branco. Não use listas nem marcadores.
+
+CONFLITOS: o texto base vem do checklist marcado pelo vistoriador. Se uma anotação CONTRADISSER o texto base (exemplo: o texto diz "instalado em local adequado" e a anotação diz "extintor fora da altura" ou "fora do local"), NÃO junte as duas informações e NÃO altere o fato do texto base: mantenha o parágrafo como está e registre o conflito.
+Anotações que são recomendações ou exigências (ex.: "instalar", "adequar", "providenciar") NÃO entram no texto; registre-as também como conflito/observação.
+
+FORMATO DA RESPOSTA: primeiro o texto final. Se houver conflitos, depois do texto escreva uma linha contendo exatamente ### CONFLITOS e, abaixo dela, um conflito por linha, curto, em português simples (ex.: "Anotação diz que o extintor está fora da altura padrão, mas o checklist marca 'em local adequado'."). Se não houver conflitos, NÃO escreva a linha ### CONFLITOS.`;
   }
   if (tipo === "laudo_conclusao") {
     return `${ESTILO}
@@ -118,11 +124,18 @@ async function chamarIA(system: string, conteudo: string, maxTokens: number) {
     });
     if (resp.ok) {
       const data = await resp.json();
-      return (data.content || [])
+      const texto = (data.content || [])
         .filter((b: { type: string }) => b.type === "text")
         .map((b: { text: string }) => b.text)
         .join("\n")
         .trim();
+      if (texto) {
+        console.log("gerar-texto: respondeu", modelo);
+        return texto;
+      }
+      ultimoErro = `${modelo}: resposta vazia (stop_reason=${data.stop_reason})`;
+      console.error("gerar-texto:", ultimoErro);
+      continue;
     }
     ultimoErro = `${modelo}: ${resp.status} ${await resp.text()}`;
     console.error("gerar-texto: falha no modelo", ultimoErro);
@@ -154,8 +167,13 @@ Deno.serve(async (req) => {
       const anotacoes = String(corpo.anotacoes || "").trim();
       if (!base && !anotacoes) return resposta({ error: "Sem texto para redigir." }, 400, origin);
       if (base.length + anotacoes.length > MAX_ENTRADA) return resposta({ error: "Texto muito longo." }, 400, origin);
-      const texto = await chamarIA(promptLaudo(tipo), mensagemLaudo(tipo, base, anotacoes), tipo === "laudo_condicoes" ? 1500 : 700);
-      return resposta({ texto }, 200, origin);
+      const anot = tipo === "laudo_caracterizacao" ? "" : anotacoes; // caracterização não usa anotações
+      const bruto = await chamarIA(promptLaudo(tipo), mensagemLaudo(tipo, base, anot), tipo === "laudo_condicoes" ? 1800 : 700);
+      const [parteTexto, parteConflitos = ""] = bruto.split(/^\s*#{2,}\s*CONFLITOS\s*$/m);
+      const conflitos = parteConflitos.split("\n").map((l) => l.replace(/^[-•*\d.)\s]+/, "").trim()).filter(Boolean);
+      const texto = parteTexto.trim();
+      if (!texto) return resposta({ error: "A IA não devolveu texto. Tente de novo." }, 502, origin);
+      return resposta({ texto, conflitos }, 200, origin);
     }
 
     // ---- Modos antigos (aplicativo) ----
