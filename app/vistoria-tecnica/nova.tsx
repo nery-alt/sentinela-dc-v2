@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
+import { IconeGps } from '../../components/ui/icone-gps';
 import { buscarAlvarasSAD, AlvaraBuscaSAD, FotoAlvara } from '../../lib/sadApi';
 import { escolherFotoAlvara, lerFotos, MAX_FOTOS_ALVARA } from '../../lib/fotosAlvara';
 import { gerarTextoIA } from '../../lib/ia';
@@ -430,7 +431,7 @@ export default function NovaVistoriaTecnica() {
             <View style={{ flex: 1 }}><Field label="Bairro"><Input value={form.bairro} onChangeText={(v: string) => set('bairro', v)} placeholder="Bairro" /></Field></View>
           </View>
           <TouchableOpacity style={styles.gpsBtn} onPress={capturaGPS}>
-            <Text style={styles.gpsBtnText}>📍 {form.gps_lat ? `GPS: ${form.gps_lat.toFixed(4)}, ${form.gps_lng?.toFixed(4)}` : 'Capturar GPS (opcional)'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><IconeGps size={18} /><Text style={styles.gpsBtnText}>{form.gps_lat ? `GPS: ${form.gps_lat.toFixed(4)}, ${form.gps_lng?.toFixed(4)}` : 'Capturar GPS (opcional)'}</Text></View>
           </TouchableOpacity>
           <Field label="Tipo de Estabelecimento"><Input value={form.tipo_estabelecimento} onChangeText={(v: string) => set('tipo_estabelecimento', v)} placeholder="Ex: Restaurante, Loja, Escritório" /></Field>
           <View style={styles.row}>

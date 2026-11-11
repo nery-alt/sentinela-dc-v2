@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { useMemo } from 'react';
 import { Colors } from '../../constants/colors';
+import { IconeGps } from '../../components/ui/icone-gps';
 import { useCollection } from '../../hooks/useRecord';
 import { exportRelatorioMensalPdf } from '../../lib/pdf';
 
@@ -20,7 +21,8 @@ function StatCard({ label, value, color }: { label: string; value: number | stri
   );
 }
 
-function ChartTitle({ title }: { title: string }) {
+function ChartTitle({ title, pino }: { title: string; pino?: boolean }) {
+  if (pino) return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><IconeGps size={18} /><Text style={styles.chartTitle}>{title}</Text></View>;
   return <Text style={styles.chartTitle}>{title}</Text>;
 }
 
@@ -192,7 +194,7 @@ export default function Painel() {
 
       {/* ── Top 5 Bairros ─────────────────────────── */}
       <View style={styles.card}>
-        <ChartTitle title="📍 Top 5 Bairros com mais ocorrências" />
+        <ChartTitle title="Top 5 Bairros com mais ocorrências" pino />
         {stats.top5.length === 0 ? (
           <Text style={styles.empty}>Sem dados de bairro</Text>
         ) : (

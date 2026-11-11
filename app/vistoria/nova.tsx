@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
+import { IconeGps } from '../../components/ui/icone-gps';
 import { buscarPessoasSAD, PessoaSAD } from '../../lib/sadApi';
 import { gerarTextoIA } from '../../lib/ia';
 
@@ -367,7 +368,7 @@ export default function NovaVistoria() {
         <View style={styles.section}>
           <SectionTitle title="🔍 Dados da Vistoria" />
           <TouchableOpacity style={styles.gpsBtn} onPress={capturaGPS}>
-            <Text style={styles.gpsBtnText}>📍 {form.gps_lat ? `GPS: ${form.gps_lat.toFixed(4)}, ${form.gps_lng?.toFixed(4)}` : 'Capturar GPS (opcional)'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><IconeGps size={18} /><Text style={styles.gpsBtnText}>{form.gps_lat ? `GPS: ${form.gps_lat.toFixed(4)}, ${form.gps_lng?.toFixed(4)}` : 'Capturar GPS (opcional)'}</Text></View>
           </TouchableOpacity>
           <Field label="Tipificação *">
             <BtnGroup options={TIPIFICACOES} value={form.tipificacao} onChange={(v) => set('tipificacao', v)} />

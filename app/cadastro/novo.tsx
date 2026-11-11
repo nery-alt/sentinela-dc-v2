@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import * as Location from 'expo-location';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
+import { IconeGps } from '../../components/ui/icone-gps';
 import { buscarPessoasSAD, PessoaSAD } from '../../lib/sadApi';
 
 const GENEROS = ['Masculino', 'Feminino', 'Outro', 'Prefiro não informar'];
@@ -14,7 +15,8 @@ const TIPOS_MORADIA = ['Própria', 'Alugada', 'Cedida', 'Irregular', 'Abrigo'];
 const MATERIAIS = ['Alvenaria', 'Madeira', 'Mista', 'Palha', 'Outro'];
 const PRIORIDADES = ['Baixa', 'Média', 'Alta', 'Emergencial'];
 
-function SectionTitle({ title }: { title: string }) {
+function SectionTitle({ title, pino }: { title: string; pino?: boolean }) {
+  if (pino) return <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><IconeGps size={18} /><Text style={styles.sectionTitle}>{title}</Text></View>;
   return <Text style={styles.sectionTitle}>{title}</Text>;
 }
 
@@ -440,7 +442,7 @@ export default function NovoCadastro() {
         </View>
 
         <View style={styles.section}>
-          <SectionTitle title="📍 Endereço" />
+          <SectionTitle title="Endereço" pino />
           <Field label="Endereço Completo *"><Input value={form.endereco} onChangeText={(v: string) => set('endereco', v)} placeholder="Rua, número, complemento" /></Field>
           <View style={styles.row}>
             <View style={{ flex: 1 }}><Field label="Bairro/Comunidade"><Input value={form.bairro} onChangeText={(v: string) => set('bairro', v)} placeholder="Bairro" /></Field></View>
@@ -451,7 +453,7 @@ export default function NovoCadastro() {
             <View style={{ flex: 1 }}><Field label="Ponto de Referência"><Input value={form.ponto_referencia} onChangeText={(v: string) => set('ponto_referencia', v)} placeholder="Próximo a..." /></Field></View>
           </View>
           <TouchableOpacity style={styles.gpsBtn} onPress={capturaGPS}>
-            <Text style={styles.gpsBtnText}>📍 {form.gps_lat ? `GPS: ${form.gps_lat.toFixed(4)}, ${form.gps_lng?.toFixed(4)}` : 'Capturar GPS (opcional)'}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><IconeGps size={18} /><Text style={styles.gpsBtnText}>{form.gps_lat ? `GPS: ${form.gps_lat.toFixed(4)}, ${form.gps_lng?.toFixed(4)}` : 'Capturar GPS (opcional)'}</Text></View>
           </TouchableOpacity>
         </View>
 

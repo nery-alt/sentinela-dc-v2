@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'rea
 import { router, useLocalSearchParams } from 'expo-router';
 import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
+import { IconeGps } from '../../components/ui/icone-gps';
 import { useRecord } from '../../hooks/useRecord';
 import { exportCadastroPdf } from '../../lib/pdf';
 
@@ -16,8 +17,9 @@ function Row({ label, value }: { label: string; value?: string | number | boolea
     </View>
   );
 }
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return <View style={styles.section}><Text style={styles.sectionTitle}>{title}</Text>{children}</View>;
+function Section({ title, children, pino }: { title: string; children: React.ReactNode; pino?: boolean }) {
+  const titulo = <Text style={styles.sectionTitle}>{title}</Text>;
+  return <View style={styles.section}>{pino ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}><IconeGps size={18} />{titulo}</View> : titulo}{children}</View>;
 }
 
 export default function DetalheCadastro() {
@@ -108,7 +110,7 @@ export default function DetalheCadastro() {
           <Row label="E-mail" value={r.email} />
         </Section>
 
-        <Section title="📍 Endereço">
+        <Section title="Endereço" pino>
           <Row label="Rua / Nº" value={r.endereco} />
           <Row label="Bairro" value={r.bairro} />
           <Row label="Cidade" value={r.municipio} />
