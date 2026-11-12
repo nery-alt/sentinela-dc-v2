@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-// gerar-texto v10 — IA compartilhada pelo aplicativo Sentinela DC e pelo SAD.
+// gerar-texto v11 — IA compartilhada pelo aplicativo Sentinela DC e pelo SAD.
+// v11: relatório de vistoria — trava de divergência em todas as seções e nada de frases sobre dado que faltou.
 // v10: regra explícita para a IA não copiar fatos dos exemplos de estilo.
 // v9: modos do Relatório Técnico de Vistoria (vistoria_objeto, vistoria_situacao, vistoria_recomendacoes, vistoria_conclusao).
 // v8: texto vazio tenta o modelo reserva; caracterização ignora anotações; condições avisam conflitos.
@@ -130,15 +131,17 @@ REGRAS ABSOLUTAS:
 - NÃO mude o sentido de nenhum fato. Números de pessoas e famílias ficam exatamente como informados (com dois dígitos: 01, 04, 07).
 - Nomes de órgãos e siglas ficam EXATAMENTE como no texto base (ex.: "SEMIO", "SEMASC", "SEMMALP"); nunca troque uma sigla por outra.
 - SEMPRE devolva o texto completo, mesmo que não haja nada a mudar.
-- NUNCA escreva título, rótulo, numeração de seção, saudação, explicação ou comentário. Responda SOMENTE com o texto final.`;
+- NUNCA escreva frases sobre informação que faltou ou não foi informada (ex.: "Não foram informadas pessoas afetadas"). Se um dado não veio, simplesmente não o mencione.
+- NUNCA escreva título, rótulo, numeração de seção, saudação, explicação ou comentário. Responda SOMENTE com o texto final.
+
+DIVERGÊNCIAS: o TEXTO BASE é o que o vistoriador conferiu. Se uma anotação CONTRADISSER o texto base (ex.: o texto diz que o muro está inclinado com risco de tombamento e a anotação diz que o muro caiu), NÃO junte as duas versões e NÃO troque o fato do texto base: mantenha o texto base e registre a divergência.
+FORMATO: primeiro o texto final. Se houver divergências, depois do texto escreva uma linha contendo exatamente ### CONFLITOS e, abaixo dela, uma divergência por linha, curta, em português simples. Se não houver, NÃO escreva essa linha.`;
 
 const TAREFA_VISTORIA: Record<string, string> = {
   vistoria_objeto: `TAREFA: revise o parágrafo de "OBJETO": diz o que foi vistoriado, onde e para quê. Use as anotações só para precisar o que foi vistoriado (sem descrever danos em detalhe — isso é da seção seguinte). Responda com UM parágrafo, de 1 a 2 frases, começando por "O presente Relatório Técnico de Vistoria tem por finalidade".`,
-  vistoria_situacao: `TAREFA: escreva a seção "SITUAÇÃO CONSTATADA E ANÁLISE" a partir do texto base e das anotações da equipe: o que foi constatado em campo, os danos, as pessoas afetadas e a análise do risco que decorre DIRETAMENTE desses fatos. De 2 a 5 parágrafos curtos, separados por UMA linha em branco. Não use listas. Não escreva recomendações nem encaminhamentos.
-
-CONFLITOS: se uma anotação contradisser o texto base, mantenha o texto base e registre o conflito. FORMATO: primeiro o texto; se houver conflitos, depois uma linha com exatamente ### CONFLITOS e um conflito por linha, em português simples. Se não houver, NÃO escreva essa linha.`,
+  vistoria_situacao: `TAREFA: escreva a seção "SITUAÇÃO CONSTATADA E ANÁLISE" a partir do texto base e das anotações da equipe: o que foi constatado em campo, os danos, as pessoas afetadas e a análise do risco que decorre DIRETAMENTE desses fatos. De 2 a 5 parágrafos curtos, separados por UMA linha em branco. Não use listas. Não escreva recomendações nem encaminhamentos.`,
   vistoria_recomendacoes: `TAREFA: revise a lista de "RECOMENDAÇÕES". Cada linha do texto base é um item; mantenha EXATAMENTE os mesmos itens, na mesma ordem e na mesma quantidade, reescrevendo cada um em uma frase técnica completa no estilo dos exemplos. Você pode tornar a finalidade de cada encaminhamento mais específica usando os fatos das anotações (ex.: "para avaliação das condições do muro"), mas NUNCA acrescente item, órgão ou medida novos.
-Responda com UM item por linha, começando cada linha pelo número e ponto ("1. ", "2. "...), sem nenhum outro texto.`,
+Responda com UM item por linha, começando cada linha pelo número e ponto ("1. ", "2. "...), sem nenhum outro texto (exceto a seção ### CONFLITOS, se houver).`,
   vistoria_conclusao: `TAREFA: revise a "CONCLUSÃO": um parágrafo que resume o que a vistoria constatou e o risco (use as anotações para isso, sem inventar), e um parágrafo final com o encaminhamento, mantendo EXATAMENTE os mesmos órgãos do texto base. Separe os parágrafos com UMA linha em branco.`,
 };
 
