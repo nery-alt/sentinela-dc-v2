@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-// gerar-texto v8 — IA compartilhada pelo aplicativo Sentinela DC e pelo SAD.
+// gerar-texto v9 — IA compartilhada pelo aplicativo Sentinela DC e pelo SAD.
+// v9: modos do Relatório Técnico de Vistoria (vistoria_objeto, vistoria_situacao, vistoria_recomendacoes, vistoria_conclusao).
 // v8: texto vazio tenta o modelo reserva; caracterização ignora anotações; condições avisam conflitos.
 // - Modos antigos (descricao_tecnica, recomendacoes, observacoes) continuam iguais para o aplicativo.
 // - Modos novos do laudo de alvará (laudo_caracterizacao, laudo_condicoes, laudo_conclusao, laudo_legendas).
@@ -105,6 +106,39 @@ function mensagemLaudo(tipo: string, base: string, anotacoes: string) {
   return `TEXTO BASE (gerado a partir do checklist da vistoria):\n${base || "(vazio)"}\n\nANOTAÇÕES DA EQUIPE EM CAMPO:\n${anotacoes || "(nenhuma)"}`;
 }
 
+
+// ---------------- Modos do Relatório Técnico de Vistoria (SAD) ----------------
+const ESTILO_VISTORIA = `Você redige o "Relatório Técnico de Vistoria" da Secretaria Municipal de Defesa Civil e Patrimonial de Tefé (SEMDCEP), Amazonas.
+Escreva em português do Brasil, linguagem técnica, formal, impessoal (terceira pessoa), frases completas e objetivas, sem gírias, no mesmo estilo dos exemplos abaixo (tirados de relatórios reais da equipe).
+
+EXEMPLOS DO ESTILO (imite o tom e a construção das frases):
+- OBJETO: "O presente Relatório Técnico de Vistoria tem por finalidade avaliar as condições de segurança de um muro localizado em imóvel residencial na Rua Espírito Santo, nº 1319, bairro São João, que apresenta inclinação acentuada, associada ao escoamento e à infiltração de águas provenientes de imóvel vizinho."
+- OBJETO: "O presente Relatório Técnico de Vistoria tem por finalidade registrar os danos ocasionados por incêndio em imóvel residencial localizado na Comunidade Cairara, Lago do Caiambé, zona rural de Tefé/AM, bem como subsidiar os encaminhamentos necessários ao atendimento da família atingida."
+- SITUAÇÃO: "Durante a vistoria, foi identificada inclinação acentuada do muro, indicando comprometimento de sua estabilidade e possibilidade de tombamento, com risco à segurança dos moradores e de pessoas que circulam nas proximidades."
+- SITUAÇÃO: "Foi registrada a ocorrência de escoamento contínuo de águas provenientes de caixas de armazenamento instaladas no imóvel vizinho, lançadas diretamente sobre o terreno, favorecendo a infiltração e o comprometimento das condições de sustentação do muro."
+- SITUAÇÃO: "O incêndio afetou diretamente 01 família composta por 07 pessoas, todas registradas como desabrigadas, em razão da perda da residência e de seus bens essenciais."
+- RECOMENDAÇÃO: "Encaminhamento à Secretaria Municipal de Infraestrutura e Obras – SEMIO, para avaliação das condições do muro e adoção das providências técnicas cabíveis, incluindo avaliação por profissional habilitado quanto à necessidade de recuperação, reforço ou reconstrução da estrutura."
+- RECOMENDAÇÃO: "Isolamento preventivo da área próxima ao muro, evitando a permanência e circulação de pessoas na zona sujeita a eventual tombamento, até que sejam avaliadas e corrigidas as condições de segurança."
+- CONCLUSÃO: "A vistoria identificou inclinação acentuada do muro, com possibilidade de tombamento, associada à ocorrência de escoamento e infiltração de águas provenientes do imóvel vizinho, condições que podem contribuir para o agravamento da instabilidade da estrutura."
+- CONCLUSÃO: "Dessa forma, recomenda-se o encaminhamento do presente relatório à SEMIO, para conhecimento, avaliação técnica e providências de sua competência, visando à redução dos riscos identificados e à segurança dos moradores."
+
+REGRAS ABSOLUTAS:
+- Use SOMENTE os fatos do TEXTO BASE e das ANOTAÇÕES DA EQUIPE. NUNCA invente danos, medidas, quantidades, pessoas, causas, normas, datas ou órgãos.
+- NÃO mude o sentido de nenhum fato. Números de pessoas e famílias ficam exatamente como informados (com dois dígitos: 01, 04, 07).
+- Nomes de órgãos e siglas ficam EXATAMENTE como no texto base (ex.: "SEMIO", "SEMASC", "SEMMALP"); nunca troque uma sigla por outra.
+- SEMPRE devolva o texto completo, mesmo que não haja nada a mudar.
+- NUNCA escreva título, rótulo, numeração de seção, saudação, explicação ou comentário. Responda SOMENTE com o texto final.`;
+
+const TAREFA_VISTORIA: Record<string, string> = {
+  vistoria_objeto: `TAREFA: revise o parágrafo de "OBJETO": diz o que foi vistoriado, onde e para quê. Use as anotações só para precisar o que foi vistoriado (sem descrever danos em detalhe — isso é da seção seguinte). Responda com UM parágrafo, de 1 a 2 frases, começando por "O presente Relatório Técnico de Vistoria tem por finalidade".`,
+  vistoria_situacao: `TAREFA: escreva a seção "SITUAÇÃO CONSTATADA E ANÁLISE" a partir do texto base e das anotações da equipe: o que foi constatado em campo, os danos, as pessoas afetadas e a análise do risco que decorre DIRETAMENTE desses fatos. De 2 a 5 parágrafos curtos, separados por UMA linha em branco. Não use listas. Não escreva recomendações nem encaminhamentos.
+
+CONFLITOS: se uma anotação contradisser o texto base, mantenha o texto base e registre o conflito. FORMATO: primeiro o texto; se houver conflitos, depois uma linha com exatamente ### CONFLITOS e um conflito por linha, em português simples. Se não houver, NÃO escreva essa linha.`,
+  vistoria_recomendacoes: `TAREFA: revise a lista de "RECOMENDAÇÕES". Cada linha do texto base é um item; mantenha EXATAMENTE os mesmos itens, na mesma ordem e na mesma quantidade, reescrevendo cada um em uma frase técnica completa no estilo dos exemplos. Você pode tornar a finalidade de cada encaminhamento mais específica usando os fatos das anotações (ex.: "para avaliação das condições do muro"), mas NUNCA acrescente item, órgão ou medida novos.
+Responda com UM item por linha, começando cada linha pelo número e ponto ("1. ", "2. "...), sem nenhum outro texto.`,
+  vistoria_conclusao: `TAREFA: revise a "CONCLUSÃO": um parágrafo que resume o que a vistoria constatou e o risco (use as anotações para isso, sem inventar), e um parágrafo final com o encaminhamento, mantendo EXATAMENTE os mesmos órgãos do texto base. Separe os parágrafos com UMA linha em branco.`,
+};
+
 async function chamarIA(system: string, conteudo: string, maxTokens: number) {
   let ultimoErro = "";
   for (const modelo of MODELOS) {
@@ -169,6 +203,24 @@ Deno.serve(async (req) => {
       if (base.length + anotacoes.length > MAX_ENTRADA) return resposta({ error: "Texto muito longo." }, 400, origin);
       const anot = tipo === "laudo_caracterizacao" ? "" : anotacoes; // caracterização não usa anotações
       const bruto = await chamarIA(promptLaudo(tipo), mensagemLaudo(tipo, base, anot), tipo === "laudo_condicoes" ? 1800 : 700);
+      const [parteTexto, parteConflitos = ""] = bruto.split(/^\s*#{2,}\s*CONFLITOS\s*$/m);
+      const conflitos = parteConflitos.split("\n").map((l) => l.replace(/^[-•*\d.)\s]+/, "").trim()).filter(Boolean);
+      const texto = parteTexto.trim();
+      if (!texto) return resposta({ error: "A IA não devolveu texto. Tente de novo." }, 502, origin);
+      return resposta({ texto, conflitos }, 200, origin);
+    }
+
+    // ---- Relatório Técnico de Vistoria (SAD) ----
+    if (tipo.startsWith("vistoria_")) {
+      const tarefa = TAREFA_VISTORIA[tipo];
+      if (!tarefa) return resposta({ error: "Tipo inválido." }, 400, origin);
+      const base = String(corpo.base || "").trim();
+      const anotacoes = String(corpo.anotacoes || "").trim();
+      if (!base && !anotacoes) return resposta({ error: "Sem texto para redigir." }, 400, origin);
+      if (base.length + anotacoes.length > MAX_ENTRADA) return resposta({ error: "Texto muito longo." }, 400, origin);
+      const bruto = await chamarIA(`${ESTILO_VISTORIA}\n\n${tarefa}`,
+        `TEXTO BASE:\n${base || "(vazio)"}\n\nANOTAÇÕES DA EQUIPE EM CAMPO:\n${anotacoes || "(nenhuma)"}`,
+        tipo === "vistoria_situacao" ? 1800 : 1000);
       const [parteTexto, parteConflitos = ""] = bruto.split(/^\s*#{2,}\s*CONFLITOS\s*$/m);
       const conflitos = parteConflitos.split("\n").map((l) => l.replace(/^[-•*\d.)\s]+/, "").trim()).filter(Boolean);
       const texto = parteTexto.trim();
