@@ -153,90 +153,75 @@ async function printAndShare(html: string, sadMeta: SadMeta): Promise<void> {
   );
 }
 
+// Só gera e compartilha o PDF (a vistoria vai ao SAD pelo botão "Enviar ao SAD", com dados e fotos)
+async function apenasCompartilhar(html: string): Promise<void> {
+  const { uri } = await Print.printToFileAsync({ html, base64: false });
+  await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Salvar ou compartilhar PDF', UTI: 'com.adobe.pdf' });
+}
+
+function listaJson(v: any): string[] {
+  if (Array.isArray(v)) return v.map(String);
+  try { const l = JSON.parse(v || '[]'); return Array.isArray(l) ? l.map(String) : []; } catch { return []; }
+}
+
+// As fotos vão para o anexo do relatório no SAD; aqui só a lista com as legendas
+function fotosHtml(v: any): string {
+  let fotos: any[] = [];
+  try { const l = typeof v === 'string' ? JSON.parse(v || '[]') : v; fotos = Array.isArray(l) ? l : []; } catch { fotos = []; }
+  if (!fotos.length) return '';
+  return section(`Fotos registradas (${Math.min(fotos.length, 8)})`, fotos.slice(0, 8).map((f: any, i: number) =>
+    row(`Foto ${String(i + 1).padStart(2, '0')}`, f?.legenda || '(sem legenda)')).join(''));
+}
+
 export async function exportVistoriaPdf(r: any): Promise<void> {
   const s = await getSettings();
   const proto = (r.protocolo && String(r.protocolo).trim()) ? r.protocolo : '—';
-  let orgaos = '';
-  try { orgaos = r.orgao_destino ? JSON.parse(r.orgao_destino).join(', ') : ''; } catch { orgaos = r.orgao_destino || ''; }
+  const orgaos = listaJson(r.orgao_destino).map(o => (o === 'Outros' ? (r.qual_orgao_outro || '') : o)).filter(Boolean).join(', ');
+  const medidas = listaJson(r.medidas).join('; ');
   const gps = r.gps_lat ? `${Number(r.gps_lat).toFixed(6)}, ${Number(r.gps_lng).toFixed(6)}` : null;
+  const ehOrgao = r.origem_tipo === 'orgao';
+  const risco = [r.nivel_risco, r.risco_iminente === true || r.risco_iminente === 1 ? 'RISCO IMINENTE' : ''].filter(Boolean).join(' — ');
 
   const body = [
-    section('Dados do Solicitante', [
-      row('Nome', r.nome_solicitante), row('CPF', r.cpf), row('RG', r.rg),
-      row('Telefone', r.telefone), row('E-mail', r.email),
-      row('Endereço', r.endereco), row('Bairro/Comunidade', r.bairro),
-      row('Município/UF', r.municipio), row('Ponto de Referência', r.ponto_referencia),
-      row('Protocolo', r.protocolo), row('GPS', gps),
+    section('Quem pediu a vistoria', (ehOrgao ? [
+      row('Órgão', r.orgao_demandante || r.nome_solicitante), row('Documento', r.documento_origem),
+      row('O que pediram para avaliar', r.escopo_pedido),
+    ] : [
+      row('Nome', r.nome_solicitante), row('CPF', r.cpf), row('Telefone', r.telefone),
+    ]).concat([row('Protocolo', r.protocolo)]).join('')),
+    section('Local da ocorrência', [
+      row('Zona', r.localizacao), row('Endereço / local', r.endereco), row('Bairro / Comunidade', r.bairro),
+      row('Município/UF', r.municipio), row('Ponto de referência', r.ponto_referencia), row('GPS', gps),
     ].join('')),
-    section('Dados da Vistoria', [
-      row('Tipificação', r.tipificacao), row('Qual Tipificação (Outro)', r.qual_tipificacao_outro),
-      row('Nível de Risco', r.nivel_risco), row('Localização', r.localizacao),
-      row('Tipo de Imóvel', r.tipo_imovel), row('Material de Construção', r.material_construcao),
-      row('Qual Material (Outro)', r.qual_material_outro), row('Propriedade', r.propriedade),
+    section('Ocorrência e risco', [
+      row('Tipo de ocorrência', r.tipificacao === 'Outros' && r.qual_tipificacao_outro ? r.qual_tipificacao_outro : r.tipificacao),
+      row('Nível de risco', risco),
     ].join('')),
-    section('Danos', [
+    section('O que encontrei', [
+      row('Constatado', r.descricao_situacao), row('Relatado', r.relatado),
+      row('Danos materiais', r.danos_materiais),
+    ].join('')),
+    section('Atingidos', [
+      row('Pessoas afetadas', r.pessoas_afetadas), row('Famílias afetadas', r.familias_afetadas),
       row('Desabrigados', r.desabrigados), row('Desalojados', r.desalojados),
-      row('Pessoas Afetadas', r.pessoas_afetadas), row('Famílias Afetadas', r.familias_afetadas),
-      row('Danos Materiais', r.danos_materiais), row('Endereço da Ocorrência', r.endereco_ocorrencia),
-      row('Descrição da Situação', r.descricao_situacao), row('Recomendações', r.recomendacoes),
     ].join('')),
-    section('Estrutura e Riscos', [
-      row('Tipo de Estrutura', r.tipo_estrutura), row('Qual Estrutura (Outro)', r.qual_estrutura_outro),
-      row('Risco Estrutural', r.risco_estrutural), row('Obs. Risco Estrutural', r.obs_risco_estrutural),
-      row('Risco Hidrológico', r.risco_hidrologico), row('Obs. Risco Hidrológico', r.obs_risco_hidrologico),
+    section('Imóvel', [
+      row('Tipo de imóvel', r.tipo_imovel),
+      row('Material de construção', r.material_construcao === 'Outros' && r.qual_material_outro ? r.qual_material_outro : r.material_construcao),
+      row('Propriedade', r.propriedade), row('Situação do imóvel', r.situacao_imovel),
     ].join('')),
-    section('Encaminhamento', [
-      row('Órgão Destino', orgaos || null), row('Qual Órgão (Outro)', r.qual_orgao_outro),
-      row('Situação do Imóvel', r.situacao_imovel), row('Reavaliação', r.reavaliacao),
+    section('Medidas e encaminhamento', [
+      row('Medidas recomendadas', medidas), row('Outras medidas', r.recomendacoes),
+      row('Encaminhar para', orgaos || null),
     ].join('')),
     section('Vistoriador', [
       row('Nome', r.nome_vistoriador), row('Matrícula', r.matricula),
     ].join('')),
+    fotosHtml(r.fotos),
   ].join('');
 
-  const protoSafe = sanitizeFileName(proto);
-
-  const ocorrencia: OcorrenciaSAD = {
-    sentinela_id: String(r.id),
-    pessoa_id: r.sad_pessoa_id || null,
-    protocolo: r.protocolo ?? null,
-    latitude: r.gps_lat != null ? Number(r.gps_lat) : null,
-    longitude: r.gps_lng != null ? Number(r.gps_lng) : null,
-    endereco: r.endereco ?? null,
-    bairro: r.bairro ?? null,
-    municipio_uf: r.municipio ?? null,
-    ponto_referencia: r.ponto_referencia ?? null,
-    data_vistoria: ymdLocal(r.created_at ? new Date(r.created_at) : new Date()),
-    tipificacao: r.tipificacao ?? null,
-    tipificacao_outro: r.qual_tipificacao_outro ?? null,
-    nivel_risco: r.nivel_risco ?? null,
-    localizacao: r.localizacao ?? null,
-    tipo_imovel: r.tipo_imovel ?? null,
-    material_construcao: r.material_construcao ?? null,
-    propriedade: r.propriedade ?? null,
-    pessoas_afetadas: r.pessoas_afetadas != null ? (Number(r.pessoas_afetadas) || 0) : 0,
-    familias_afetadas: r.familias_afetadas != null ? (Number(r.familias_afetadas) || 0) : 0,
-    descricao_situacao: r.descricao_situacao ?? null,
-    recomendacoes: r.recomendacoes ?? null,
-    tipo_estrutura: r.tipo_estrutura ?? null,
-    risco_estrutural: r.risco_estrutural ?? null,
-    obs_risco_estrutural: r.obs_risco_estrutural ?? null,
-    risco_hidrologico: r.risco_hidrologico ?? null,
-    orgao_destino: orgaos || null,
-    situacao_imovel: r.situacao_imovel ?? null,
-    reavaliacao: r.reavaliacao === true || r.reavaliacao === 'Sim' || r.reavaliacao === 1 || r.reavaliacao === '1',
-    vistoriador_nome: r.nome_vistoriador ?? null,
-    vistoriador_matricula: r.matricula ?? null,
-  };
-
-  await printAndShare(
-    makeHtml(buildHeader(s, 'Laudo de Vistoria', proto), body, buildSignatures(s, 'Responsável pelo Imóvel / Solicitante')),
-    {
-      nomeArquivo: `vistoria_${protoSafe}.pdf`,
-      descricao: `Laudo de Vistoria — Protocolo ${proto}`,
-      pessoaId: r.sad_pessoa_id,
-      ocorrencia,
-    },
+  await apenasCompartilhar(
+    makeHtml(buildHeader(s, 'Registro de Vistoria', proto), body, buildSignatures(s, ehOrgao ? 'Testemunha / Acompanhante' : 'Solicitante')),
   );
 }
 

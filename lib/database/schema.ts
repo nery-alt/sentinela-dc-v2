@@ -1,7 +1,7 @@
 import { appSchema, tableSchema } from '@nozbe/watermelondb';
 
 export const schema = appSchema({
-  version: 4,
+  version: 5,
   tables: [
     tableSchema({
       name: 'cadastros',
@@ -112,6 +112,16 @@ export const schema = appSchema({
         { name: 'obs_risco_estrutural', type: 'string', isOptional: true },
         { name: 'obs_risco_hidrologico', type: 'string', isOptional: true },
         { name: 'fotos', type: 'string', isOptional: true },
+        // v5: vistoria alinhada ao Relatório Técnico do SAD
+        { name: 'origem_tipo', type: 'string', isOptional: true },
+        { name: 'orgao_demandante', type: 'string', isOptional: true },
+        { name: 'documento_origem', type: 'string', isOptional: true },
+        { name: 'escopo_pedido', type: 'string', isOptional: true },
+        { name: 'relatado', type: 'string', isOptional: true },
+        { name: 'risco_iminente', type: 'boolean', isOptional: true },
+        { name: 'medidas', type: 'string', isOptional: true },
+        { name: 'sad_pessoa_id', type: 'string', isOptional: true },
+        { name: 'enviado_sad_em', type: 'number', isOptional: true },
         { name: 'rascunho', type: 'boolean' },
         { name: 'sincronizado', type: 'boolean' },
         { name: 'created_at', type: 'number' },

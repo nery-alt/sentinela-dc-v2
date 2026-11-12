@@ -246,3 +246,38 @@ export async function enviarAlvaraSAD(params: {
   if (!res.ok || !dados.ok) throw new Error(dados.error || `SAD respondeu ${res.status}`);
   return { campos: dados.campos ?? 0, fotos: dados.fotos ?? 0 };
 }
+
+// =============================================================
+// Vistoria (ocorrência): envio para o SAD pela porta receber-vistoria.
+// Só aceita vistoria ligada a um protocolo que já existe no SAD (ex.: 144/2026).
+// Grava a ocorrência e as fotos do anexo do Relatório Técnico de Vistoria.
+// =============================================================
+export async function uploadFotoVistoriaSAD(uri: string, protocolo: string, ordem: number): Promise<string> {
+  const resp = await fetch(uri);
+  const blob = await resp.blob();
+  const num = protocolo.replace(/[^A-Za-z0-9]+/g, '-');
+  const path = `sentinela/vistorias/${num}_${ordem}_${Date.now()}.jpg`;
+  const up = await fetch(`${SAD_URL}/storage/v1/object/documentos/${path}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
+    body: blob,
+  });
+  if (!up.ok) { const body = await up.text(); throw new Error(`Foto ${ordem}: ${up.status} ${body}`); }
+  return `${SAD_URL}/storage/v1/object/public/documentos/${path}`;
+}
+
+export async function enviarVistoriaSAD(params: {
+  protocolo: string;
+  sentinela_id: string;
+  campos: Record<string, unknown>;
+  fotos: { ordem: number; url: string; legenda: string }[];
+}): Promise<{ protocolo: string; campos: number; fotos: number; semEspaco: number }> {
+  const res = await fetch(`${SAD_URL}/functions/v1/receber-vistoria`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  const dados = await res.json().catch(() => ({}));
+  if (!res.ok || !dados.ok) throw new Error(dados.error || `SAD respondeu ${res.status}`);
+  return { protocolo: dados.protocolo, campos: dados.campos ?? 0, fotos: dados.fotos ?? 0, semEspaco: dados.sem_espaco ?? 0 };
+}

@@ -17,6 +17,8 @@ export default function Vistorias() {
 
   const filtradas = vistorias.filter(v =>
     v._raw.nome_solicitante?.toLowerCase().includes(busca.toLowerCase()) ||
+    v._raw.endereco?.toLowerCase().includes(busca.toLowerCase()) ||
+    v._raw.protocolo?.toLowerCase().includes(busca.toLowerCase()) ||
     v._raw.protocolo?.includes(busca)
   );
 
@@ -52,7 +54,7 @@ export default function Vistorias() {
         }
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.card} onPress={() => router.push(`/vistoria/detalhe?id=${item.id}`)}>
-            <Text style={styles.cardName}>{item._raw.nome_solicitante}</Text>
+            <Text style={styles.cardName}>{item._raw.nome_solicitante || item._raw.orgao_demandante || item._raw.endereco || 'Sem nome'}</Text>
             <Text style={styles.cardDetail}>{item._raw.endereco || 'Endereço não informado'}</Text>
             {item._raw.protocolo ? <Text style={styles.cardDetail}>Protocolo: {item._raw.protocolo}</Text> : null}
             <View style={styles.badgeRow}>

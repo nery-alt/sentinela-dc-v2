@@ -76,5 +76,26 @@ export const migrations = schemaMigrations({
         }),
       ]
     },
+    {
+      // v5: vistoria alinhada ao Relatório Técnico do SAD — origem (pessoa/órgão), relatado,
+      // risco iminente, medidas, vínculo com a pessoa do SAD e envio
+      toVersion: 5,
+      steps: [
+        addColumns({
+          table: 'vistorias',
+          columns: [
+            { name: 'origem_tipo', type: 'string', isOptional: true },
+            { name: 'orgao_demandante', type: 'string', isOptional: true },
+            { name: 'documento_origem', type: 'string', isOptional: true },
+            { name: 'escopo_pedido', type: 'string', isOptional: true },
+            { name: 'relatado', type: 'string', isOptional: true },
+            { name: 'risco_iminente', type: 'boolean', isOptional: true },
+            { name: 'medidas', type: 'string', isOptional: true },
+            { name: 'sad_pessoa_id', type: 'string', isOptional: true },
+            { name: 'enviado_sad_em', type: 'number', isOptional: true },
+          ]
+        }),
+      ]
+    },
   ]
 });
