@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-// gerar-texto v9 — IA compartilhada pelo aplicativo Sentinela DC e pelo SAD.
+// gerar-texto v10 — IA compartilhada pelo aplicativo Sentinela DC e pelo SAD.
+// v10: regra explícita para a IA não copiar fatos dos exemplos de estilo.
 // v9: modos do Relatório Técnico de Vistoria (vistoria_objeto, vistoria_situacao, vistoria_recomendacoes, vistoria_conclusao).
 // v8: texto vazio tenta o modelo reserva; caracterização ignora anotações; condições avisam conflitos.
 // - Modos antigos (descricao_tecnica, recomendacoes, observacoes) continuam iguais para o aplicativo.
@@ -67,6 +68,7 @@ EXEMPLOS DO ESTILO DOS LAUDOS (imite o tom e a construção das frases):
 - "Quanto à estabilidade estrutural, verificou-se que o imóvel apresenta boas condições de conservação, sem presença de trincas, fissuras ou qualquer anomalia estrutural aparente no momento da vistoria."
 
 REGRAS ABSOLUTAS:
+- Os EXEMPLOS servem SÓ para o estilo de escrita. NUNCA copie deles fatos, endereços, tipo de imóvel, causas ou adjetivos (ex.: "pequeno porte", "distribuidora", "01 extintor") que não estejam no TEXTO BASE ou nas ANOTAÇÕES.
 - Use SOMENTE os fatos do TEXTO BASE e das ANOTAÇÕES DA EQUIPE. NUNCA invente equipamentos, quantidades, medidas, normas, datas, problemas ou condições.
 - NÃO mude o sentido de nenhum fato: o que está como "possui" continua "possui"; o que está como irregular continua irregular.
 - NÃO emita parecer (favorável/desfavorável) e NÃO acrescente recomendações que não estejam no texto.
@@ -123,6 +125,7 @@ EXEMPLOS DO ESTILO (imite o tom e a construção das frases):
 - CONCLUSÃO: "Dessa forma, recomenda-se o encaminhamento do presente relatório à SEMIO, para conhecimento, avaliação técnica e providências de sua competência, visando à redução dos riscos identificados e à segurança dos moradores."
 
 REGRAS ABSOLUTAS:
+- Os EXEMPLOS servem SÓ para o estilo de escrita. NUNCA copie deles fatos, endereços, tipo de imóvel, causas ou adjetivos (ex.: "residencial", "acentuada", "de imóvel vizinho") que não estejam no TEXTO BASE ou nas ANOTAÇÕES.
 - Use SOMENTE os fatos do TEXTO BASE e das ANOTAÇÕES DA EQUIPE. NUNCA invente danos, medidas, quantidades, pessoas, causas, normas, datas ou órgãos.
 - NÃO mude o sentido de nenhum fato. Números de pessoas e famílias ficam exatamente como informados (com dois dígitos: 01, 04, 07).
 - Nomes de órgãos e siglas ficam EXATAMENTE como no texto base (ex.: "SEMIO", "SEMASC", "SEMMALP"); nunca troque uma sigla por outra.
