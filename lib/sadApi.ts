@@ -1,5 +1,25 @@
-const SAD_URL = 'https://okdghwjcpnkkxcrvjaxg.supabase.co';
-const SAD_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9rZGdod2pjcG5ra3hjcnZqYXhnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwNTAyNTcsImV4cCI6MjA5MjYyNjI1N30.vmOiB1gvxvyD74EZ6DGal_rVHxucdU6waJoqoyFCj2k';
+import { SAD_URL, SAD_KEY } from './sadConfig';
+import { tokenSAD } from './sadAuth';
+
+// Enquanto true: se o SAD recusar o login (401/403), repete UMA vez com a chave pública.
+// Será desligada numa versão futura, quando todos estiverem usando login.
+const PERMITIR_CHAVE_PUBLICA = true;
+
+// Monta os cabeçalhos de autorização do SAD: prefere o token do login; sem login, usa a chave pública.
+async function fetchSAD(url: string, init: RequestInit = {}): Promise<Response> {
+  const token = await tokenSAD();
+  const montar = (bearer: string): RequestInit => ({
+    ...init,
+    headers: { ...(init.headers as Record<string, string> | undefined), apikey: SAD_KEY, Authorization: `Bearer ${bearer}` },
+  });
+  if (!token) return fetch(url, montar(SAD_KEY));
+  const res = await fetch(url, montar(token));
+  if ((res.status === 401 || res.status === 403) && PERMITIR_CHAVE_PUBLICA) {
+    console.warn('[sad] voltou para chave pública');
+    return fetch(url, montar(SAD_KEY));
+  }
+  return res;
+}
 
 export type PessoaSAD = {
   id: string; nome: string; cpf: string; rg: string; data_nascimento: string;
@@ -24,8 +44,8 @@ export async function buscarPessoasSAD(query: string): Promise<PessoaSAD[]> {
     or: `(nome.ilike.*${query}*,orgao.ilike.*${query}*,cpf.ilike.*${query}*)`,
     limit: '20',
   });
-  const res = await fetch(`${SAD_URL}/rest/v1/pessoas?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY },
+  const res = await fetchSAD(`${SAD_URL}/rest/v1/pessoas?${params.toString()}`, {
+    headers: {},
   });
   if (!res.ok) { const body = await res.text(); throw new Error(`SAD ${res.status}: ${body}`); }
   return res.json();
@@ -67,8 +87,8 @@ export async function buscarAlvarasSAD(query: string): Promise<AlvaraBuscaSAD[]>
     limit: '20',
   });
 
-  const res = await fetch(`${SAD_URL}/rest/v1/alvaras?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY },
+  const res = await fetchSAD(`${SAD_URL}/rest/v1/alvaras?${params.toString()}`, {
+    headers: {},
   });
   if (!res.ok) { const body = await res.text(); throw new Error(`SAD ${res.status}: ${body}`); }
   return res.json();
@@ -78,10 +98,9 @@ export async function uploadPdfParaSAD(uri: string, nomeArquivo: string): Promis
   const response = await fetch(uri);
   const blob = await response.blob();
   const path = `sentinela/${Date.now()}_${nomeArquivo}`;
-  const uploadRes = await fetch(`${SAD_URL}/storage/v1/object/documentos/${path}`, {
+  const uploadRes = await fetchSAD(`${SAD_URL}/storage/v1/object/documentos/${path}`, {
     method: 'PUT',
     headers: {
-      Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY,
       'Content-Type': 'application/pdf', 'x-upsert': 'true',
     },
     body: blob,
@@ -97,10 +116,9 @@ export async function registrarDocumentoSAD(params: {
     nome: params.nome, caminho: params.url, tipo: 'PDF',
     descricao: params.descricao || null, pessoa_id: params.pessoaId || null,
   };
-  const res = await fetch(`${SAD_URL}/rest/v1/documentos_recebidos`, {
+  const res = await fetchSAD(`${SAD_URL}/rest/v1/documentos_recebidos`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY,
       'Content-Type': 'application/json', Prefer: 'return=minimal',
     },
     body: JSON.stringify(payload),
@@ -131,10 +149,9 @@ export type OcorrenciaSAD = {
 
 export async function registrarOcorrenciaSAD(o: OcorrenciaSAD): Promise<void> {
   const payload: Record<string, any> = { origem: 'sentinela_v2', ...o };
-  const res = await fetch(`${SAD_URL}/rest/v1/ocorrencias?on_conflict=sentinela_id`, {
+  const res = await fetchSAD(`${SAD_URL}/rest/v1/ocorrencias?on_conflict=sentinela_id`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY,
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates,return=minimal',
     },
@@ -200,10 +217,9 @@ export type AlvaraSAD = {
 
 export async function registrarAlvaraSAD(a: AlvaraSAD): Promise<void> {
   const payload: Record<string, any> = { origem: 'sentinela_v2', ...a };
-  const res = await fetch(`${SAD_URL}/rest/v1/alvaras?on_conflict=sentinela_id`, {
+  const res = await fetchSAD(`${SAD_URL}/rest/v1/alvaras?on_conflict=sentinela_id`, {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY,
       'Content-Type': 'application/json',
       Prefer: 'resolution=merge-duplicates,return=minimal',
     },
@@ -223,9 +239,9 @@ export async function uploadFotoAlvaraSAD(uri: string, numero: string, ordem: nu
   const blob = await resp.blob();
   const num = numero.replace(/[^A-Za-z0-9]+/g, '-');
   const path = `sentinela/alvaras/${num}_${ordem}_${Date.now()}.jpg`;
-  const up = await fetch(`${SAD_URL}/storage/v1/object/documentos/${path}`, {
+  const up = await fetchSAD(`${SAD_URL}/storage/v1/object/documentos/${path}`, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
+    headers: { 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
     body: blob,
   });
   if (!up.ok) { const body = await up.text(); throw new Error(`Foto ${ordem}: ${up.status} ${body}`); }
@@ -237,9 +253,9 @@ export async function enviarAlvaraSAD(params: {
   campos: Record<string, unknown>;
   fotos: { ordem: number; url: string; legenda: string }[];
 }): Promise<{ campos: number; fotos: number }> {
-  const res = await fetch(`${SAD_URL}/functions/v1/receber-alvara`, {
+  const res = await fetchSAD(`${SAD_URL}/functions/v1/receber-alvara`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   });
   const dados = await res.json().catch(() => ({}));
@@ -257,9 +273,9 @@ export async function uploadFotoVistoriaSAD(uri: string, protocolo: string, orde
   const blob = await resp.blob();
   const num = protocolo.replace(/[^A-Za-z0-9]+/g, '-');
   const path = `sentinela/vistorias/${num}_${ordem}_${Date.now()}.jpg`;
-  const up = await fetch(`${SAD_URL}/storage/v1/object/documentos/${path}`, {
+  const up = await fetchSAD(`${SAD_URL}/storage/v1/object/documentos/${path}`, {
     method: 'PUT',
-    headers: { Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
+    headers: { 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
     body: blob,
   });
   if (!up.ok) { const body = await up.text(); throw new Error(`Foto ${ordem}: ${up.status} ${body}`); }
@@ -272,9 +288,9 @@ export async function enviarVistoriaSAD(params: {
   campos: Record<string, unknown>;
   fotos: { ordem: number; url: string; legenda: string }[];
 }): Promise<{ protocolo: string; campos: number; fotos: number; semEspaco: number }> {
-  const res = await fetch(`${SAD_URL}/functions/v1/receber-vistoria`, {
+  const res = await fetchSAD(`${SAD_URL}/functions/v1/receber-vistoria`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${SAD_KEY}`, apikey: SAD_KEY, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   });
   const dados = await res.json().catch(() => ({}));
