@@ -6,7 +6,8 @@ import { Colors } from '../../constants/colors';
 import { useRecord } from '../../hooks/useRecord';
 import { exportVistoriaPdf } from '../../lib/pdf';
 import { lerFotos, MAX_FOTOS_VISTORIA } from '../../lib/fotosAlvara';
-import { uploadFotoVistoriaSAD, enviarVistoriaSAD } from '../../lib/sadApi';
+import { uploadFotoVistoriaSAD, enviarVistoriaSAD, conferirProtocoloSAD, ConferenciaProtocolo } from '../../lib/sadApi';
+import { semAcento, mensagemErroSAD } from '../../lib/textoSAD';
 import { lerLista, textoOrgaos } from '../../lib/vistoriaOpcoes';
 
 function Row({ label, value }: { label: string; value?: string | number | boolean | null }) {
@@ -60,9 +61,41 @@ export default function DetalheVistoria() {
     }
     const fotos = lerFotos(r.fotos, MAX_FOTOS_VISTORIA);
     const semLegenda = fotos.filter(f => !f.legenda.trim()).length;
-    Alert.alert('Enviar ao SAD', `Enviar a vistoria para o protocolo ${protocolo}?\n\n${fotos.length} foto(s)${semLegenda ? ` — ${semLegenda} sem legenda` : ''}.\nAs fotos entram nos quadros livres do relatório; as que você colocou pelo computador no SAD não são trocadas.`, [
+    const resumoFotos = `${fotos.length} foto(s)${semLegenda ? ` — ${semLegenda} sem legenda` : ''}.\nAs fotos entram nos quadros livres do relatório; as que você colocou pelo computador no SAD não são trocadas.`;
+
+    // Conferência SÓ DE LEITURA no SAD (máx. ~5 s). Se falhar, o usuário pode enviar mesmo assim.
+    setEnviando('Conferindo o protocolo no SAD…');
+    let conf: ConferenciaProtocolo | null = null;
+    try { conf = await conferirProtocoloSAD(protocolo); } catch { conf = null; } finally { setEnviando(null); }
+
+    const ehOrgaoEnvio = r.origem_tipo === 'orgao';
+    const nomeApp = String((ehOrgaoEnvio ? r.orgao_demandante : r.nome_solicitante) || '').trim();
+    let texto: string;
+    let botaoEnviar: string;
+    if (conf) {
+      const avisos: string[] = [];
+      if (semAcento(conf.assunto).includes('alvar')) {
+        avisos.push('ATENÇÃO: este protocolo é de ALVARÁ. Vistoria de ocorrência normalmente vai em protocolo de vistoria.');
+      }
+      const primeiroNome = semAcento(nomeApp).split(/\s+/)[0] || '';
+      if (!ehOrgaoEnvio && primeiroNome && conf.dono && !semAcento(conf.dono).includes(primeiroNome)) {
+        avisos.push('ATENÇÃO: o nome digitado no app não bate com o dono do protocolo.');
+      }
+      texto = `Enviar para o protocolo ${conf.numero || protocolo}?\n\n`
+        + `Assunto: ${conf.assunto || '—'}\n`
+        + `Dono do protocolo: ${conf.dono || '—'}\n`
+        + `${ehOrgaoEnvio ? 'Órgão demandante digitado no app' : 'Solicitante digitado no app'}: ${nomeApp || '—'}`
+        + (avisos.length ? `\n\n${avisos.join('\n\n')}` : '')
+        + `\n\n${resumoFotos}`;
+      botaoEnviar = 'Enviar';
+    } else {
+      texto = `Não consegui conferir o protocolo agora.\n\nEnviar a vistoria para o protocolo ${protocolo}?\n\n${resumoFotos}`;
+      botaoEnviar = 'Enviar mesmo assim';
+    }
+
+    Alert.alert('Enviar ao SAD', texto, [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Enviar', onPress: async () => {
+      { text: botaoEnviar, onPress: async () => {
         try {
           const enviadas: { ordem: number; url: string; legenda: string }[] = [];
           for (let i = 0; i < fotos.length; i++) {
@@ -105,7 +138,8 @@ export default function DetalheVistoria() {
           const aviso = res.semEspaco ? `\n\n⚠️ ${res.semEspaco} foto(s) não couberam: o relatório já tem fotos colocadas pelo computador (máximo de 8). Tire alguma no SAD e reenvie.` : '';
           Alert.alert('Enviado ao SAD ✓', `Protocolo ${res.protocolo}: dados e ${res.fotos} foto(s) recebidos.${aviso}\n\nNo SAD, abra o protocolo e clique em Relatório.`);
         } catch (e: any) {
-          Alert.alert('Não foi possível enviar', `${e?.message || 'Erro desconhecido'}\n\nVerifique a internet e tente de novo. Nada foi perdido no celular.`);
+          const claro = mensagemErroSAD(e, 'Sua vistoria continua salva no celular.');
+          Alert.alert('Não foi possível enviar', claro || `${e?.message || 'Erro desconhecido'}\n\nVerifique a internet e tente de novo. Nada foi perdido no celular.`);
         } finally {
           setEnviando(null);
         }

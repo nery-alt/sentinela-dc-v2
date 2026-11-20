@@ -6,6 +6,7 @@ import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
 import { IconeGps } from '../../components/ui/icone-gps';
 import { buscarAlvarasSAD, AlvaraBuscaSAD, FotoAlvara } from '../../lib/sadApi';
+import { mensagemErroSAD } from '../../lib/textoSAD';
 import { escolherFotoAlvara, lerFotos, MAX_FOTOS_ALVARA } from '../../lib/fotosAlvara';
 import { gerarTextoIA } from '../../lib/ia';
 
@@ -357,7 +358,7 @@ export default function NovaVistoriaTecnica() {
     try {
       const res = await buscarAlvarasSAD(sadQuery.trim());
       setSadResultados(res);
-    } catch { Alert.alert('Erro', 'Não foi possível conectar ao SAD.'); }
+    } catch (e) { Alert.alert('Erro', mensagemErroSAD(e, '') || 'Não foi possível conectar ao SAD.'); }
     finally { setBuscandoSAD(false); }
   }
   function selecionarSAD(a: AlvaraBuscaSAD) {

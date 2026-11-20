@@ -3,13 +3,14 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Alert } 
 import { router } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { useCollection } from '../../hooks/useRecord';
+import { contemSemAcento } from '../../lib/textoSAD';
 
 export default function Cadastros() {
   const { records: cadastros, tick } = useCollection('cadastros');
   const [busca, setBusca] = useState('');
 
   const filtrados = cadastros.filter(c =>
-    c._raw.nome?.toLowerCase().includes(busca.toLowerCase()) ||
+    contemSemAcento(c._raw.nome, busca) ||
     c._raw.cpf?.includes(busca)
   );
 

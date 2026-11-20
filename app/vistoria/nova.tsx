@@ -6,6 +6,7 @@ import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
 import { IconeGps } from '../../components/ui/icone-gps';
 import { buscarPessoasSAD, PessoaSAD, FotoAlvara } from '../../lib/sadApi';
+import { mensagemErroSAD } from '../../lib/textoSAD';
 import { escolherFotoVistoria, lerFotos, MAX_FOTOS_VISTORIA } from '../../lib/fotosAlvara';
 import { lerCoordenadas, faltouSinal, formatar, type Coord } from '../../lib/coordenadas';
 import { TIPOS_OCORRENCIA, NIVEIS_RISCO, MEDIDAS, ORGAOS_DESTINO, mostraImovel, lerLista, camposEmBranco } from '../../lib/vistoriaOpcoes';
@@ -332,7 +333,7 @@ export default function NovaVistoria() {
     try {
       const res = await buscarPessoasSAD(sadQuery.trim());
       setSadResultados(res);
-    } catch { Alert.alert('Erro', 'Não foi possível conectar ao SAD.'); }
+    } catch (e) { Alert.alert('Erro', mensagemErroSAD(e, '') || 'Não foi possível conectar ao SAD.'); }
     finally { setBuscandoSAD(false); }
   }
   function selecionarSAD(p: PessoaSAD) {
