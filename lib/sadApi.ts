@@ -21,6 +21,24 @@ async function fetchSAD(url: string, init: RequestInit = {}): Promise<Response> 
   return res;
 }
 
+// Busca sem acento (funções buscar_*_sem_acento do SAD; só funcionam com login).
+// Devolve null se não der (sem login, função ausente, erro, sem internet ou nada achado):
+// aí quem chamou usa a busca antiga (ilike), que continua igual.
+async function buscarSemAcentoSAD<T>(funcao: string, campos: string, query: string): Promise<T[] | null> {
+  try {
+    const res = await fetchSAD(`${SAD_URL}/rest/v1/rpc/${funcao}?${new URLSearchParams({ select: campos }).toString()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: query }),
+    });
+    if (!res.ok) return null;
+    const dados = await res.json();
+    return Array.isArray(dados) && dados.length > 0 ? (dados as T[]) : null;
+  } catch {
+    return null;
+  }
+}
+
 export type PessoaSAD = {
   id: string; nome: string; cpf: string; rg: string; data_nascimento: string;
   genero: string; estado_civil: string; telefone: string; email: string;
@@ -39,6 +57,8 @@ export async function buscarPessoasSAD(query: string): Promise<PessoaSAD[]> {
     'renda_familiar','tipo_moradia','material_construcao',
     'area_risco','deficiencia','doenca_cronica','prioridade',
   ].join(',');
+  const semAcento = await buscarSemAcentoSAD<PessoaSAD>('buscar_pessoas_sem_acento', campos, query);
+  if (semAcento) return semAcento;
   const params = new URLSearchParams({
     select: campos,
     or: `(nome.ilike.*${query}*,orgao.ilike.*${query}*,cpf.ilike.*${query}*)`,
@@ -79,6 +99,9 @@ export async function buscarAlvarasSAD(query: string): Promise<AlvaraBuscaSAD[]>
     'gps_lat', 'gps_lng', 'tipo_estabelecimento', 'area_total', 'capacidade_pessoas',
     'classificacao_porte', 'classificacao_risco',
   ].join(',');
+
+  const semAcento = await buscarSemAcentoSAD<AlvaraBuscaSAD>('buscar_alvaras_sem_acento', campos, query);
+  if (semAcento) return semAcento;
 
   const params = new URLSearchParams({
     select: campos,
@@ -296,4 +319,43 @@ export async function enviarVistoriaSAD(params: {
   const dados = await res.json().catch(() => ({}));
   if (!res.ok || !dados.ok) throw new Error(dados.error || `SAD respondeu ${res.status}`);
   return { protocolo: dados.protocolo, campos: dados.campos ?? 0, fotos: dados.fotos ?? 0, semEspaco: dados.sem_espaco ?? 0 };
+}
+
+// =============================================================
+// Conferência antes de enviar a vistoria: SÓ LEITURA, nunca lança erro.
+// Devolve null se não conseguir conferir em ~5 s (sem internet, sem login, erro, protocolo não achado).
+// =============================================================
+export type ConferenciaProtocolo = { numero: string; assunto: string; status: string; dono: string };
+
+export async function conferirProtocoloSAD(protocolo: string, limiteMs = 5000): Promise<ConferenciaProtocolo | null> {
+  const consulta = async (): Promise<ConferenciaProtocolo | null> => {
+    const numero = protocolo.replace(/\s+/g, '');
+    const q = new URLSearchParams({ numero: `eq.${numero}`, select: 'numero,assunto,status,pessoa_id', limit: '1' });
+    const res = await fetchSAD(`${SAD_URL}/rest/v1/protocolos?${q.toString()}`);
+    if (!res.ok) return null;
+    const lista = await res.json();
+    const p = Array.isArray(lista) ? lista[0] : null;
+    if (!p) return null;
+    let dono = '';
+    if (p.pessoa_id) {
+      const qp = new URLSearchParams({ id: `eq.${p.pessoa_id}`, select: 'nome', limit: '1' });
+      const rp = await fetchSAD(`${SAD_URL}/rest/v1/pessoas?${qp.toString()}`);
+      if (rp.ok) {
+        const pessoas = await rp.json();
+        dono = (Array.isArray(pessoas) && pessoas[0]?.nome) || '';
+      }
+    }
+    return { numero: String(p.numero ?? numero), assunto: String(p.assunto ?? ''), status: String(p.status ?? ''), dono: String(dono) };
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      consulta().catch(() => null),
+      new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), limiteMs); }),
+    ]);
+  } catch {
+    return null;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }

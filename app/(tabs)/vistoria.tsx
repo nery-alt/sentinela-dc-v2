@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'r
 import { router } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { useCollection } from '../../hooks/useRecord';
+import { contemSemAcento } from '../../lib/textoSAD';
 
 const NIVEL_CORES: Record<string, string> = {
   'Baixo': Colors.success,
@@ -16,9 +17,9 @@ export default function Vistorias() {
   const [busca, setBusca] = useState('');
 
   const filtradas = vistorias.filter(v =>
-    v._raw.nome_solicitante?.toLowerCase().includes(busca.toLowerCase()) ||
-    v._raw.endereco?.toLowerCase().includes(busca.toLowerCase()) ||
-    v._raw.protocolo?.toLowerCase().includes(busca.toLowerCase()) ||
+    contemSemAcento(v._raw.nome_solicitante, busca) ||
+    contemSemAcento(v._raw.endereco, busca) ||
+    contemSemAcento(v._raw.protocolo, busca) ||
     v._raw.protocolo?.includes(busca)
   );
 

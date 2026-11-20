@@ -7,6 +7,7 @@ import { useRecord } from '../../hooks/useRecord';
 import { exportVistoriaTecnicaPdf } from '../../lib/pdf';
 import { uploadFotoAlvaraSAD, enviarAlvaraSAD } from '../../lib/sadApi';
 import { lerFotos } from '../../lib/fotosAlvara';
+import { mensagemErroSAD } from '../../lib/textoSAD';
 
 function Row({ label, value }: { label: string; value?: string | number | boolean | null }) {
   if (value === null || value === undefined || value === '' || value === 0) return null;
@@ -85,7 +86,8 @@ export default function DetalheVistoriaTecnica() {
           });
           Alert.alert('Enviado ao SAD ✓', `Alvará ${numero} atualizado: ${res.campos} campo(s) e ${res.fotos} foto(s).\n\nNo SAD, abra o alvará e clique em Laudo.`);
         } catch (e: any) {
-          Alert.alert('Não foi possível enviar', `${e?.message || 'Erro desconhecido'}\n\nVerifique a internet e tente de novo. Nada foi perdido no celular.`);
+          const claro = mensagemErroSAD(e, 'Sua vistoria continua salva no celular.');
+          Alert.alert('Não foi possível enviar', claro || `${e?.message || 'Erro desconhecido'}\n\nVerifique a internet e tente de novo. Nada foi perdido no celular.`);
         } finally {
           setEnviando(null);
         }

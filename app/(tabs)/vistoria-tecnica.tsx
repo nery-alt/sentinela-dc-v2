@@ -3,13 +3,14 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput } from 'r
 import { router } from 'expo-router';
 import { Colors } from '../../constants/colors';
 import { useCollection } from '../../hooks/useRecord';
+import { contemSemAcento } from '../../lib/textoSAD';
 
 export default function VistoriasTecnicas() {
   const { records: vistorias, tick } = useCollection('vistorias_tecnicas');
   const [busca, setBusca] = useState('');
 
   const filtradas = vistorias.filter(v =>
-    v._raw.nome_estabelecimento?.toLowerCase().includes(busca.toLowerCase()) ||
+    contemSemAcento(v._raw.nome_estabelecimento, busca) ||
     v._raw.protocolo?.includes(busca) ||
     v._raw.cnpj?.includes(busca)
   );

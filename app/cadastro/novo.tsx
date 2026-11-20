@@ -6,6 +6,7 @@ import { database } from '../../lib/database';
 import { Colors } from '../../constants/colors';
 import { IconeGps } from '../../components/ui/icone-gps';
 import { buscarPessoasSAD, PessoaSAD } from '../../lib/sadApi';
+import { mensagemErroSAD } from '../../lib/textoSAD';
 
 const GENEROS = ['Masculino', 'Feminino', 'Outro', 'Prefiro não informar'];
 const ESTADOS_CIVIS = ['Solteiro(a)', 'Casado(a)', 'Divorciado(a)', 'Viúvo(a)', 'União estável'];
@@ -220,7 +221,7 @@ export default function NovoCadastro() {
       const resultados = await buscarPessoasSAD(sadQuery.trim());
       setSadResultados(resultados);
     } catch (e) {
-      Alert.alert('Erro', 'Não foi possível buscar no SAD.');
+      Alert.alert('Erro', mensagemErroSAD(e, '') || 'Não foi possível buscar no SAD.');
     } finally {
       setBuscandoSAD(false);
     }
